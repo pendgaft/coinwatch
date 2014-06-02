@@ -13,6 +13,7 @@ public class HarvestExperiment {
 	private ExperimentContainer holdingContainer;
 	
 	private static final int THREAD_COUNT = 10;
+	public static final int MIN_GAIN = 50;
 	
 	public HarvestExperiment(){
 		

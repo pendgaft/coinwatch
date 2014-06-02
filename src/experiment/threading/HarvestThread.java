@@ -2,12 +2,11 @@ package experiment.threading;
 
 import net.Node;
 import experiment.ExperimentContainer;
+import experiment.HarvestExperiment;
 
 public class HarvestThread implements Runnable {
 	
 	private ExperimentContainer parent;
-	
-	private static final int MIN_GAIN = 50;
 	
 	public HarvestThread(ExperimentContainer holdingContainer){
 		this.parent = holdingContainer;
@@ -20,9 +19,9 @@ public class HarvestThread implements Runnable {
 				Node nodeToHarvest = this.parent.fetchWork();
 				nodeToHarvest.clearContacts();
 				
-				int gain = HarvestThread.MIN_GAIN;
+				int gain = HarvestExperiment.MIN_GAIN;
 				int counter = 0;
-				while(gain >= HarvestThread.MIN_GAIN){
+				while(gain >= HarvestExperiment.MIN_GAIN){
 					counter++;
 					int oldSize = nodeToHarvest.getContacts().size();
 					nodeToHarvest.querryForNodes();
