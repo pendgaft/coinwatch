@@ -9,7 +9,7 @@ public class DNSSeed {
 	/*
 	 * TTLs
 	 *   seed.bitcointstats.com - 60
-	 *   bitseed.xf2.org - 1158
+	 *   bitseed.xf2.org - 1800 (have seen 1158, dynamic?)
 	 *   seed.bitcoin.sipa.be - 60
 	 *   dnsseed.bitcoin.dashjr.org - 60
 	 */

@@ -1,7 +1,5 @@
 package message;
 
-import java.util.Arrays;
-
 import util.ByteOps;
 
 public class VerAck extends CommonMessage{
