@@ -1,6 +1,7 @@
 package experiment;
 
 import java.util.*;
+import java.io.*;
 
 import net.Node;
 import data.Contact;
@@ -52,5 +53,21 @@ public class HarvestExperiment {
 		System.out.println("*******");
 		System.out.println("Took " + time + " seconds.");
 		System.out.println("Found nodes: " + harvestedContacts.size());
+	}
+	
+	public static void main(String args[]) throws IOException, InterruptedException{
+		BufferedWriter connLog = new BufferedWriter(new FileWriter("logs/conTest.log"));
+		
+		ConnectionExperiment connTest = new ConnectionExperiment(connLog);
+		HarvestExperiment self = new HarvestExperiment();
+		
+		Set<Contact> targets = ConnectionExperiment.dnsBootStrap();
+		connTest.pushNodesToTest(targets);
+		connTest.run();
+		Set<Node> connectedNodes = connTest.getReachableNodes();
+		connTest.shutdown();
+		
+		self.pushNodesToTest(connectedNodes);
+		self.run();
 	}
 }
