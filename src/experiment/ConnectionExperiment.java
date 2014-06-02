@@ -27,7 +27,7 @@ public class ConnectionExperiment {
 		this.nodesToTest = new HashSet<Contact>();
 		this.successfulNodes = new HashSet<Node>();
 		this.logFile = log;
-		
+
 		/*
 		 * Build container and worker threads, start those threads
 		 */
@@ -38,13 +38,26 @@ public class ConnectionExperiment {
 			tThread.start();
 		}
 	}
-	
-	public void pushNodesToTest(Set<Contact> targets){
+
+	public void shutdown() {
+
+		try {
+			this.logFile.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+		// TODO close nodes?
+
+		// TODO shutdown threads?
+	}
+
+	public void pushNodesToTest(Set<Contact> targets) {
 		this.successfulNodes.clear();
 		this.nodesToTest.addAll(targets);
 	}
-	
-	public Set<Node> getReachableNodes(){
+
+	public Set<Node> getReachableNodes() {
 		return this.successfulNodes;
 	}
 
@@ -52,11 +65,11 @@ public class ConnectionExperiment {
 		/*
 		 * Make sure we actually have data
 		 */
-		if(this.nodesToTest.size() == 0){
+		if (this.nodesToTest.size() == 0) {
 			System.err.println("Tried to run Connection Experiment with no nodes.");
 			return;
 		}
-		
+
 		/*
 		 * Prune out IPv6 Addresses
 		 */
@@ -135,6 +148,7 @@ public class ConnectionExperiment {
 		ConnectionExperiment test = new ConnectionExperiment(outBuff);
 		test.pushNodesToTest(testNodes);
 		test.run();
+		test.shutdown();
 	}
 
 }
