@@ -60,10 +60,10 @@ public class Node {
 			this.iStream = this.nodeSocket.getInputStream();
 			this.oStream = this.nodeSocket.getOutputStream();
 		} catch (SocketTimeoutException e) {
-			System.out.println("Timeout connecting");
+			//System.out.println("Timeout connecting");
 			return false;
 		} catch (IOException e) {
-			System.err.println("Socket connection error");
+			//System.err.println("Socket connection error");
 			return false;
 		}
 

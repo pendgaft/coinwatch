@@ -1,5 +1,8 @@
 package experiment.threading;
 
+import java.util.logging.*;
+
+import net.Constants;
 import net.Node;
 import experiment.ExperimentContainer;
 import experiment.HarvestExperiment;
@@ -7,9 +10,11 @@ import experiment.HarvestExperiment;
 public class HarvestThread implements Runnable {
 	
 	private ExperimentContainer parent;
+	private Logger expLog;
 	
 	public HarvestThread(ExperimentContainer holdingContainer){
 		this.parent = holdingContainer;
+		this.expLog = Logger.getLogger(Constants.HARVEST_LOG);
 	}
 	
 	@Override
@@ -28,7 +33,7 @@ public class HarvestThread implements Runnable {
 					gain = nodeToHarvest.getContacts().size() - oldSize;
 				}
 				
-				System.out.println("Took " + counter + " iterations.");
+				this.expLog.config("Took " + counter + " iterations.");
 				this.parent.returnCompletedNode(nodeToHarvest);
 			}
 		}catch(InterruptedException e){

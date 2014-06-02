@@ -6,7 +6,7 @@ public class Constants {
 
 	public static final int DEFAULT_PORT = 8333;
 	
-	public static final int CONNECT_TIMEOUT = 1000;
+	public static final int CONNECT_TIMEOUT = 5000;
 	public static final long TRANSACTION_TIMEOUT = 5000;
 	public static final TimeUnit TRANSACTION_TIMEOUT_UNIT = TimeUnit.MILLISECONDS;
 	
@@ -16,4 +16,6 @@ public class Constants {
 	public static final String VERACK_CMD = "verack";
 	public static final String GETADDR_CMD = "getaddr";
 	public static final String ADDR_CMD = "addr";
+	
+	public static final String HARVEST_LOG = "experiment.harvestlog";
 }
