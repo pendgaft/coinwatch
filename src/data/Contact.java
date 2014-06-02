@@ -19,7 +19,7 @@ public class Contact {
 	}
 	
 	public Node getNodeForContact(){
-		return new Node(this.myIp, this.myPort);
+		return new Node(this);
 	}
 
 	public void updateTimeStamp(long ts, boolean direct){

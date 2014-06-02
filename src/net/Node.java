@@ -11,8 +11,7 @@ import data.Contact;
 //TODO better error handling
 public class Node {
 
-	private InetAddress dest;
-	private int destPort;
+	private Contact parent; 
 
 	private int connectionState;
 	private Socket nodeSocket;
@@ -24,11 +23,8 @@ public class Node {
 
 	private Semaphore transactionFlag;
 
-	private static final int HARVEST_THRESH = 50;
-
-	public Node(InetAddress destIP, int port) {
-		this.dest = destIP;
-		this.destPort = port;
+	public Node(Contact parentContact) {
+		this.parent = parentContact;
 		this.connectionState = 0;
 		this.iStream = null;
 		this.oStream = null;
@@ -37,6 +33,10 @@ public class Node {
 		this.learnedContacts = new HashSet<Contact>();
 
 		this.transactionFlag = new Semaphore(0);
+	}
+	
+	public int hashCode(){
+		return this.parent.hashCode();
 	}
 
 	public boolean thinksConnected() {
@@ -56,7 +56,7 @@ public class Node {
 		 */
 		try {
 			this.nodeSocket = new Socket();
-			this.nodeSocket.connect(new InetSocketAddress(this.dest, this.destPort), Constants.CONNECT_TIMEOUT);
+			this.nodeSocket.connect(new InetSocketAddress(this.parent.getIp(), this.parent.getPort()), Constants.CONNECT_TIMEOUT);
 			this.iStream = this.nodeSocket.getInputStream();
 			this.oStream = this.nodeSocket.getOutputStream();
 		} catch (SocketTimeoutException e) {
@@ -79,7 +79,7 @@ public class Node {
 		 * Build the version packet
 		 */
 		try {
-			versionPacket = new Version(this.dest);
+			versionPacket = new Version(this.parent.getIp());
 		} catch (UnknownHostException e) {
 			e.printStackTrace();
 			return false;
