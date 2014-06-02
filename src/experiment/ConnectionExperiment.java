@@ -53,6 +53,7 @@ public class ConnectionExperiment {
 	}
 
 	public void pushNodesToTest(Set<Contact> targets) {
+		this.nodesToTest.clear();
 		this.successfulNodes.clear();
 		this.nodesToTest.addAll(targets);
 	}
