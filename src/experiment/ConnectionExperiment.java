@@ -108,7 +108,7 @@ public class ConnectionExperiment {
 		}
 		long stop = System.currentTimeMillis();
 
-		System.out.println("Time taken: " + (stop - start));
+		System.out.println("Time taken: " + ((double)(stop - start) / (double)60000));
 		System.out.println("Reachable: " + (double) passed / (double) ipv4Addresses.size());
 
 		/*
