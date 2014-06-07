@@ -20,7 +20,8 @@ public class HarvestExperiment {
 	public static final int MIN_GAIN = 50;
 
 	public HarvestExperiment() {
-
+		Constants.initConstants();
+		
 		/*
 		 * Build handlers
 		 */

@@ -24,6 +24,8 @@ public class ConnectionExperiment {
 	private ExperimentContainer workHolder;
 
 	public ConnectionExperiment(BufferedWriter log) {
+		Constants.initConstants();
+		
 		this.nodesToTest = new HashSet<Contact>();
 		this.successfulNodes = new HashSet<Node>();
 		this.logFile = log;
