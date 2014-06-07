@@ -16,15 +16,21 @@ public class Version extends CommonMessage {
 	public static final int DEFAULT_VERSION_NUMBER = 70002;
 	public static final byte[] DEFAULT_SERVICE_BYTES = ByteOps.hexStringToByteArray("0100000000000000");
 	
+	public static InetAddress srcIP;
 	
-	public Version(InetAddress dest, int destPort, InetAddress src, int srcPort){
+	public Version(InetAddress dest, int destPort){
 		super("version");
-		this.buildPayload(dest, destPort, src, srcPort);
+		this.buildPayload(dest, destPort, Version.srcIP, Constants.DEFAULT_PORT);
 	}
 	
 	public Version(InetAddress dest) throws UnknownHostException{
 		super("version");
-		this.buildPayload(dest, Constants.DEFAULT_PORT, InetAddress.getLocalHost(), Constants.DEFAULT_PORT);
+		
+		if(Version.srcIP == null){
+			Version.srcIP = InetAddress.getLocalHost();
+		}
+		
+		this.buildPayload(dest, Constants.DEFAULT_PORT, Version.srcIP, Constants.DEFAULT_PORT);
 	}
 	
 	private void buildPayload(InetAddress dest, int destPort, InetAddress src, int srcPort){

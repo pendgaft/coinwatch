@@ -11,7 +11,7 @@ import data.Contact;
 //TODO better error handling
 public class Node {
 
-	private Contact parent; 
+	private Contact parent;
 
 	private int connectionState;
 	private Socket nodeSocket;
@@ -25,6 +25,7 @@ public class Node {
 
 	public Node(Contact parentContact) {
 		this.parent = parentContact;
+		
 		this.connectionState = 0;
 		this.iStream = null;
 		this.oStream = null;
@@ -78,12 +79,8 @@ public class Node {
 		/*
 		 * Build the version packet
 		 */
-		try {
-			versionPacket = new Version(this.parent.getIp());
-		} catch (UnknownHostException e) {
-			e.printStackTrace();
-			return false;
-		}
+		versionPacket = new Version(this.parent.getIp(), this.parent.getPort());
+		
 
 		/*
 		 * The first part of the 4 way handshake is sending our version message,
