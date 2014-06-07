@@ -32,6 +32,7 @@ public class HarvestExperiment {
 			System.exit(-1);
 		}
 		logHandler.setLevel(Level.CONFIG);
+		logHandler.setFormatter(new SimpleFormatter());
 		ConsoleHandler conHandler = new ConsoleHandler();
 		conHandler.setLevel(Level.INFO);
 
@@ -39,6 +40,8 @@ public class HarvestExperiment {
 		 * Get logger, add handlers
 		 */
 		this.expLogger = Logger.getLogger(Constants.HARVEST_LOG);
+		this.expLogger.setUseParentHandlers(false);
+		this.expLogger.setLevel(Level.FINE);
 		this.expLogger.addHandler(logHandler);
 		this.expLogger.addHandler(conHandler);
 
