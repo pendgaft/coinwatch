@@ -20,7 +20,6 @@ public class DNSSeed {
 		this.dnsName = canonName;
 	}
 
-	// TODO handle exceptions cleanly?
 	public InetAddress[] fetchNodes() throws UnknownHostException {
 		return InetAddress.getAllByName(this.dnsName);
 	}
@@ -67,7 +66,6 @@ public class DNSSeed {
 			try {
 				Thread.sleep(90000);
 			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}

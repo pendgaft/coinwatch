@@ -10,6 +10,7 @@ import net.Node;
 import data.Contact;
 import experiment.threading.HarvestThread;
 
+//TODO in general we could make logging more parser friendly
 public class HarvestExperiment {
 
 	private Set<Node> nodesToTest;
@@ -69,7 +70,9 @@ public class HarvestExperiment {
 	}
 
 	public Set<Contact> getHarvestedContacts() {
-		return this.harvestedContacts;
+		Set<Contact> cloneSet = new HashSet<Contact>();
+		cloneSet.addAll(this.harvestedContacts);
+		return cloneSet;
 	}
 
 	public void run() throws InterruptedException {
@@ -90,42 +93,51 @@ public class HarvestExperiment {
 		this.expLogger.info("Harvest took " + time + " seconds.");
 		this.expLogger.info("Found nodes: " + this.harvestedContacts.size());
 	}
-	
-	public void manageMultiRoundCollection(ConnectionExperiment connTest) throws InterruptedException{
+
+	public void manageMultiRoundCollection(ConnectionExperiment connTest) throws InterruptedException {
 		Set<Contact> allKnownNodes = new HashSet<Contact>();
 		Set<Node> reachableNodes = new HashSet<Node>();
-		Set<Contact> toProbe = new HashSet<Contact>();
+		Set<Node> toHarvest = new HashSet<Node>();
+		int newNodesFound = 0;
 
-		toProbe = ConnectionExperiment.dnsBootStrap();
-		allKnownNodes.addAll(toProbe);
-		this.expLogger.info("know " + allKnownNodes.size() + " round 0");
-		
+		// TODO this should be thresholded
 		for (int counter = 0; counter < 3; counter++) {
-			connTest.pushNodesToTest(toProbe);
-			connTest.run();
-			
-			Set<Node> connectedNodes = connTest.getReachableNodes();
-			reachableNodes.addAll(connectedNodes);
-			
-			this.pushNodesToTest(connectedNodes);
-			this.run();
+			if (counter == 0) {
+				Set<Contact> toProbe = ConnectionExperiment.dnsBootStrap();
+				newNodesFound = toProbe.size();
+				allKnownNodes.addAll(toProbe);
+				connTest.pushNodesToTest(toProbe);
+				connTest.run();
 
-			/*
-			 * Prune the set to all nodes we just learned about
-			 */
-			Set<Contact> harvestNodes = this.getHarvestedContacts();
-			harvestNodes.removeAll(allKnownNodes);
-			toProbe.clear();
-			toProbe.addAll(this.getHarvestedContacts());
-			allKnownNodes.addAll(toProbe);
-			
+				toHarvest.addAll(connTest.getReachableNodes());
+				reachableNodes.addAll(toHarvest);
+			} else {
+
+				this.pushNodesToTest(toHarvest);
+				this.run();
+
+				Set<Contact> harvestNodes = this.getHarvestedContacts();
+				harvestNodes.removeAll(allKnownNodes);
+				allKnownNodes.addAll(harvestNodes);
+				newNodesFound = harvestNodes.size();
+
+				connTest.pushNodesToTest(harvestNodes);
+				connTest.run();
+
+				toHarvest.clear();
+				toHarvest.addAll(connTest.getReachableNodes());
+				reachableNodes.addAll(toHarvest);
+			}
+
 			/*
 			 * Do logging
 			 */
-			this.expLogger.info("total nodes known " + allKnownNodes.size() + " round " + (counter + 1));
-			this.expLogger.info("Reachable nodes known " + allKnownNodes.size() + " round " + (counter));
+			this.expLogger.info("total nodes known " + allKnownNodes.size() + " round " + counter);
+			this.expLogger.info("New nodes " + newNodesFound + " round " + counter);
+			this.expLogger.info("Reachable nodes known " + reachableNodes.size() + " round " + counter);
+			this.expLogger.info("New reachable nodes " + toHarvest.size() + " rount " + counter);
 		}
-		
+
 	}
 
 	public static void main(String args[]) throws IOException, InterruptedException {

@@ -19,22 +19,23 @@ public class IncomingParser implements Runnable {
 			while (true) {
 				CommonMessage incMessage = new CommonMessage(this.iStream);
 				String cmdStr = incMessage.getCommand();
-				
-				if(cmdStr.equals(Constants.VERSION_CMD)){
-					//System.out.println("handing version");
+
+				if (cmdStr.equals(Constants.VERSION_CMD)) {
 					this.parent.recievedVersion();
-				}else if(cmdStr.equals(Constants.VERACK_CMD)){
-					//System.out.println("handing version ack");
+				} else if (cmdStr.equals(Constants.VERACK_CMD)) {
 					this.parent.recievedVerAck();
-				} else if(cmdStr.equals(Constants.ADDR_CMD)){
+				} else if (cmdStr.equals(Constants.ADDR_CMD)) {
 					this.parent.recievedAddr(incMessage.getPayload());
-				}
-				else{
-					//TODO handle bad command
+				} else {
+					/*
+					 * We don't implement all commands as this is not a full
+					 * fledged client, so we silently drop any command we don't
+					 * care about
+					 */
 				}
 			}
 		} catch (IOException e) {
-			this.parent.reportIOError();
+			this.parent.reportNodeIOError();
 		}
 	}
 

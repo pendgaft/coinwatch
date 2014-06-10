@@ -167,14 +167,14 @@ public class CommonStructures {
 		return lengthSize + size;
 	}
 
-	// FIXME handle IPv6
+	// TODO IPv6 support
 	public static byte[] netAddress(InetAddress addy, int port, boolean includeTS) {
 		byte[] outBytes = null;
 		int tsOffset = 0;
 
 		if (includeTS) {
 			outBytes = new byte[30];
-			// TODO impl
+			// TODO impl time stamp
 			// ByteOps.appendBytes(data, outBytes, 0);
 			tsOffset = 4;
 		} else {

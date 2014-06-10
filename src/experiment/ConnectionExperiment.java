@@ -108,7 +108,7 @@ public class ConnectionExperiment {
 		/*
 		 * Do round logging
 		 */
-		this.expLogger.info("Connection took: " + ((double) (stop - start) / (double) 60000));
+		this.expLogger.info("Connection took: " + ((double) (stop - start) / (double) 60000) + " minutes");
 		this.expLogger.info("IPv4," + ipv4Addresses.size() + "," + this.nodesToTest.size());
 		this.expLogger.info("reachable," + passed + "," + ipv4Addresses.size());
 

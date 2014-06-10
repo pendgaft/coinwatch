@@ -9,6 +9,7 @@ import message.*;
 import data.Contact;
 
 //TODO better error handling
+//TODO logger for exceptions, just so we can look at them and sanity check
 public class Node {
 
 	private Contact parent;
@@ -25,7 +26,7 @@ public class Node {
 
 	public Node(Contact parentContact) {
 		this.parent = parentContact;
-		
+
 		this.connectionState = 0;
 		this.iStream = null;
 		this.oStream = null;
@@ -35,8 +36,8 @@ public class Node {
 
 		this.transactionFlag = new Semaphore(0);
 	}
-	
-	public int hashCode(){
+
+	public int hashCode() {
 		return this.parent.hashCode();
 	}
 
@@ -44,7 +45,6 @@ public class Node {
 		return this.connectionState == 15;
 	}
 
-	// TODO better error handling please
 	public boolean connect() {
 		Version versionPacket;
 
@@ -57,14 +57,13 @@ public class Node {
 		 */
 		try {
 			this.nodeSocket = new Socket();
-			this.nodeSocket.connect(new InetSocketAddress(this.parent.getIp(), this.parent.getPort()), Constants.CONNECT_TIMEOUT);
+			this.nodeSocket.connect(new InetSocketAddress(this.parent.getIp(), this.parent.getPort()),
+					Constants.CONNECT_TIMEOUT);
 			this.iStream = this.nodeSocket.getInputStream();
 			this.oStream = this.nodeSocket.getOutputStream();
 		} catch (SocketTimeoutException e) {
-			//System.out.println("Timeout connecting");
 			return false;
 		} catch (IOException e) {
-			//System.err.println("Socket connection error");
 			return false;
 		}
 
@@ -80,7 +79,6 @@ public class Node {
 		 * Build the version packet
 		 */
 		versionPacket = new Version(this.parent.getIp(), this.parent.getPort());
-		
 
 		/*
 		 * The first part of the 4 way handshake is sending our version message,
@@ -90,8 +88,11 @@ public class Node {
 			this.oStream.write(versionPacket.getBytes());
 			this.oStream.flush();
 		} catch (IOException e1) {
-			// TODO teardown
-			e1.printStackTrace();
+			try {
+				this.nodeSocket.close();
+			} catch (IOException e2) {
+				// Can be caught silently, we're already dying
+			}
 			return false;
 		}
 		this.connectionState += 1;
@@ -99,7 +100,11 @@ public class Node {
 		try {
 			this.transactionFlag.tryAcquire(2, Constants.TRANSACTION_TIMEOUT, Constants.TRANSACTION_TIMEOUT_UNIT);
 		} catch (InterruptedException e) {
-			System.out.println("Timeout trying to complete opening handshake.");
+			try {
+				this.nodeSocket.close();
+			} catch (IOException e2) {
+				// Can be caught silently, we're already dying
+			}
 			return false;
 		}
 
@@ -133,8 +138,14 @@ public class Node {
 		this.learnedContacts.addAll(incContacts);
 	}
 
-	public void reportIOError() {
-		// TODO handle error
+	//XXX is there an issue with multiple places calling this at the same time?
+	public void reportNodeIOError() {
+		this.connectionState = 0;
+		try {
+			this.nodeSocket.close();
+		} catch (IOException e) {
+			// can die silently
+		}
 	}
 
 	public void querryForNodes() {
@@ -143,8 +154,8 @@ public class Node {
 		try {
 			this.oStream.write(outMsg.getBytes());
 		} catch (IOException e) {
-			// TODO better error handling
 			e.printStackTrace();
+			this.reportNodeIOError();
 		}
 
 		try {

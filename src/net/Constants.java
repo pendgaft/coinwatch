@@ -1,6 +1,7 @@
 package net;
 
 import java.net.InetAddress;
+import java.util.Random;
 import java.net.UnknownHostException;
 import java.util.concurrent.TimeUnit;
 
@@ -22,6 +23,7 @@ public class Constants {
 	public static final String HARVEST_LOG = "experiment.harvestlog";
 
 	public static InetAddress SrcIP = null;
+	public static Random NON_SEC_RNG = new Random();
 
 	public static void initConstants(){
 		if(Constants.SrcIP == null){
