@@ -1,6 +1,7 @@
 package experiment;
 
 import java.util.*;
+import java.util.logging.*;
 import java.io.*;
 import java.net.*;
 
@@ -20,15 +21,20 @@ public class ConnectionExperiment {
 
 	private Set<Contact> nodesToTest;
 	private Set<Node> successfulNodes;
-	private BufferedWriter logFile;
+	private Logger expLogger;
 	private ExperimentContainer workHolder;
 
-	public ConnectionExperiment(BufferedWriter log) {
+	public ConnectionExperiment(boolean generateOwnLogger) {
 		Constants.initConstants();
-		
+
 		this.nodesToTest = new HashSet<Contact>();
 		this.successfulNodes = new HashSet<Node>();
-		this.logFile = log;
+
+		if (generateOwnLogger) {
+			// TODO implement
+		} else {
+			this.expLogger = Logger.getLogger(Constants.HARVEST_LOG);
+		}
 
 		/*
 		 * Build container and worker threads, start those threads
@@ -42,12 +48,6 @@ public class ConnectionExperiment {
 	}
 
 	public void shutdown() {
-
-		try {
-			this.logFile.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
 
 		// TODO close nodes?
 
@@ -83,9 +83,6 @@ public class ConnectionExperiment {
 			}
 		}
 
-		System.out.println("Unique IPv4 Addresses: " + ipv4Addresses.size() + " (" + (double) ipv4Addresses.size()
-				/ (double) this.nodesToTest.size() + ")");
-
 		long start = System.currentTimeMillis();
 
 		/*
@@ -108,19 +105,13 @@ public class ConnectionExperiment {
 		}
 		long stop = System.currentTimeMillis();
 
-		System.out.println("Time taken: " + ((double)(stop - start) / (double)60000));
-		System.out.println("Reachable: " + (double) passed / (double) ipv4Addresses.size());
-
 		/*
 		 * Do round logging
 		 */
-		try {
-			this.logFile.write("IPv4," + ipv4Addresses.size() + "," + this.nodesToTest.size() + "\n");
-			this.logFile.write("reachable," + passed + "," + ipv4Addresses.size() + "\n");
-		} catch (IOException e) {
-			e.printStackTrace();
-			System.exit(-1);
-		}
+		this.expLogger.info("Connection took: " + ((double) (stop - start) / (double) 60000));
+		this.expLogger.info("IPv4," + ipv4Addresses.size() + "," + this.nodesToTest.size());
+		this.expLogger.info("reachable," + passed + "," + ipv4Addresses.size());
+
 	}
 
 	public static Set<Contact> dnsBootStrap() {
@@ -147,8 +138,7 @@ public class ConnectionExperiment {
 	 */
 	public static void main(String[] args) throws InterruptedException, IOException {
 		Set<Contact> testNodes = ConnectionExperiment.dnsBootStrap();
-		BufferedWriter outBuff = new BufferedWriter(new FileWriter("logs/testCon.log"));
-		ConnectionExperiment test = new ConnectionExperiment(outBuff);
+		ConnectionExperiment test = new ConnectionExperiment(true);
 		test.pushNodesToTest(testNodes);
 		test.run();
 		test.shutdown();
