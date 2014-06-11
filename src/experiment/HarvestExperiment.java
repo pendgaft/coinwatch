@@ -102,6 +102,7 @@ public class HarvestExperiment {
 
 		// TODO this should be thresholded
 		for (int counter = 0; counter < 3; counter++) {
+			this.expLogger.info("starting round " + counter);
 			if (counter == 0) {
 				Set<Contact> toProbe = ConnectionExperiment.dnsBootStrap();
 				newNodesFound = toProbe.size();

@@ -135,10 +135,12 @@ public class Node {
 	public void recievedAddr(byte[] advPayload) {
 		Addr incMessage = new Addr(advPayload);
 		List<Contact> incContacts = incMessage.getLearnedContacts();
-		this.learnedContacts.addAll(incContacts);
+		synchronized (this.learnedContacts) {
+			this.learnedContacts.addAll(incContacts);
+		}
 	}
 
-	//XXX is there an issue with multiple places calling this at the same time?
+	// XXX is there an issue with multiple places calling this at the same time?
 	public void reportNodeIOError() {
 		this.connectionState = 0;
 		try {
@@ -170,6 +172,10 @@ public class Node {
 	}
 
 	public Set<Contact> getContacts() {
-		return this.learnedContacts;
+		HashSet<Contact> retSet = new HashSet<Contact>();
+		synchronized(this.learnedContacts){
+			retSet.addAll(this.learnedContacts);
+		}
+		return retSet;
 	}
 }
