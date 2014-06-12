@@ -54,6 +54,7 @@ public class HarvestExperiment {
 		this.expLogger.setLevel(Level.FINE);
 		this.expLogger.addHandler(logHandler);
 		this.expLogger.addHandler(conHandler);
+		this.expLogger.addHandler(summaryHandler);
 
 		this.nodesToTest = new HashSet<Node>();
 		this.harvestedContacts = new HashSet<Contact>();
