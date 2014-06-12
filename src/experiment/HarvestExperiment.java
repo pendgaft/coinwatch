@@ -5,6 +5,8 @@ import java.util.*;
 import java.io.*;
 import java.util.logging.*;
 
+import logging.LogHelper;
+
 import net.Constants;
 import net.Node;
 import data.Contact;
@@ -95,9 +97,9 @@ public class HarvestExperiment {
 			this.harvestedContacts.addAll(finishedNode.getContacts());
 		}
 
-		long time = (System.currentTimeMillis() - startTime) / 1000;
+		long time = (System.currentTimeMillis() - startTime);
 
-		this.expLogger.warning("Harvest took " + time + " seconds.");
+		this.expLogger.warning("Harvest took " + LogHelper.formatMili(time));
 		this.expLogger.info("Found nodes: " + this.harvestedContacts.size());
 	}
 
@@ -155,7 +157,7 @@ public class HarvestExperiment {
 		}
 
 		long time = System.currentTimeMillis() - startTime;
-		this.expLogger.warning("Total experiment time: " + (double)time / 60000.0 + " minutes.");
+		this.expLogger.warning("Total experiment time: " + LogHelper.formatMili(time));
 	}
 
 	public static void main(String args[]) throws IOException, InterruptedException {
