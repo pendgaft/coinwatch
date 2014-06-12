@@ -1,9 +1,11 @@
 package experiment.threading;
 
+import java.util.*;
 import java.util.logging.*;
 
 import net.Constants;
 import net.Node;
+import data.Contact;
 import experiment.ExperimentContainer;
 import experiment.HarvestExperiment;
 
@@ -26,14 +28,17 @@ public class HarvestThread implements Runnable {
 
 				int gain = HarvestExperiment.MIN_GAIN;
 				int counter = 0;
+				int lastSeenNodeSize = 0;
 				while (gain >= HarvestExperiment.MIN_GAIN) {
 					counter++;
-					int oldSize = nodeToHarvest.getContacts().size();
+					int oldSize = nodeToHarvest.getContactCount();
 					nodeToHarvest.querryForNodes();
-					gain = nodeToHarvest.getContacts().size() - oldSize;
+					lastSeenNodeSize = nodeToHarvest.getContactCount();
+					gain = lastSeenNodeSize - oldSize;
 				}
 
 				this.expLog.config("Took " + counter + " iterations.");
+				this.expLog.config("final size " + lastSeenNodeSize);
 				this.parent.returnCompletedNode(nodeToHarvest);
 			}
 		} catch (InterruptedException e) {

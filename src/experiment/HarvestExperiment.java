@@ -28,17 +28,23 @@ public class HarvestExperiment {
 		 * Build handlers
 		 */
 		FileHandler logHandler = null;
+		FileHandler summaryHandler = null;
+		SimpleDateFormat df = new SimpleDateFormat("yyyy.MM.dd-HH:mm:ss");
+		String tsString = df.format(new Date());
 		try {
-			SimpleDateFormat df = new SimpleDateFormat("yyyy.MM.dd-HH:mm:ss");
-			logHandler = new FileHandler("logs/harvest-" + df.format(new Date()) + ".out");
+			
+			logHandler = new FileHandler("logs/harvest-" + tsString + ".out");
+			summaryHandler = new FileHandler("logs/summary-" + tsString + ".out");
 		} catch (SecurityException | IOException e) {
 			e.printStackTrace();
 			System.exit(-1);
 		}
 		logHandler.setLevel(Level.CONFIG);
 		logHandler.setFormatter(new SimpleFormatter());
+		summaryHandler.setLevel(Level.INFO);
+		summaryHandler.setFormatter(new SimpleFormatter());
 		ConsoleHandler conHandler = new ConsoleHandler();
-		conHandler.setLevel(Level.INFO);
+		conHandler.setLevel(Level.WARNING);
 
 		/*
 		 * Get logger, add handlers
@@ -90,7 +96,7 @@ public class HarvestExperiment {
 
 		long time = (System.currentTimeMillis() - startTime) / 1000;
 
-		this.expLogger.info("Harvest took " + time + " seconds.");
+		this.expLogger.warning("Harvest took " + time + " seconds.");
 		this.expLogger.info("Found nodes: " + this.harvestedContacts.size());
 	}
 
@@ -99,10 +105,11 @@ public class HarvestExperiment {
 		Set<Node> reachableNodes = new HashSet<Node>();
 		Set<Node> toHarvest = new HashSet<Node>();
 		int newNodesFound = 0;
+		long startTime = System.currentTimeMillis();
 
 		// TODO this should be thresholded
 		for (int counter = 0; counter < 3; counter++) {
-			this.expLogger.info("starting round " + counter);
+			this.expLogger.warning("starting round " + counter);
 			if (counter == 0) {
 				Set<Contact> toProbe = ConnectionExperiment.dnsBootStrap();
 				newNodesFound = toProbe.size();
@@ -116,6 +123,13 @@ public class HarvestExperiment {
 
 				this.pushNodesToTest(toHarvest);
 				this.run();
+				
+				/*
+				 * Let's not leave all of those threads running if we don't need them
+				 */
+				for(Node tNode: toHarvest){
+					tNode.shutdownNode();
+				}
 
 				Set<Contact> harvestNodes = this.getHarvestedContacts();
 				harvestNodes.removeAll(allKnownNodes);
@@ -139,6 +153,8 @@ public class HarvestExperiment {
 			this.expLogger.info("New reachable nodes " + toHarvest.size() + " rount " + counter);
 		}
 
+		long time = System.currentTimeMillis() - startTime;
+		this.expLogger.warning("Total experiment time: " + (double)time / 60000.0 + " minutes.");
 	}
 
 	public static void main(String args[]) throws IOException, InterruptedException {

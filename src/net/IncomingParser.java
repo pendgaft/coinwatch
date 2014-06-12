@@ -35,7 +35,7 @@ public class IncomingParser implements Runnable {
 				}
 			}
 		} catch (IOException e) {
-			this.parent.reportNodeIOError();
+			this.parent.shutdownNode();
 		}
 	}
 

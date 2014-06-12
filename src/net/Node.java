@@ -141,7 +141,7 @@ public class Node {
 	}
 
 	// XXX is there an issue with multiple places calling this at the same time?
-	public void reportNodeIOError() {
+	public void shutdownNode() {
 		this.connectionState = 0;
 		try {
 			this.nodeSocket.close();
@@ -156,8 +156,7 @@ public class Node {
 		try {
 			this.oStream.write(outMsg.getBytes());
 		} catch (IOException e) {
-			e.printStackTrace();
-			this.reportNodeIOError();
+			this.shutdownNode();
 		}
 
 		try {
@@ -177,5 +176,14 @@ public class Node {
 			retSet.addAll(this.learnedContacts);
 		}
 		return retSet;
+	}
+	
+	public int getContactCount(){
+		int size = 0;
+		synchronized(this.learnedContacts){
+			size = this.learnedContacts.size();
+		}
+		
+		return size;
 	}
 }
