@@ -38,25 +38,4 @@ public class ZmapSupplicant {
 		return returnedSet;
 	}
 
-	public static void main(String[] args) throws IOException, InterruptedException {
-
-		Set<Contact> testSet = ConnectionExperiment.dnsBootStrap();
-		Set<Contact> toRemove = new HashSet<Contact>();
-		for (Contact tContact : testSet) {
-			if (tContact.getIp() instanceof Inet6Address) {
-				toRemove.add(tContact);
-			}
-		}
-		testSet.removeAll(toRemove);
-		System.out.println("Done loading test set");
-
-		ZmapSupplicant self = new ZmapSupplicant("192.168.1.69");
-		Set<Contact> retSet = self.checkAddresses(testSet);
-		System.out.println("zmap found " + retSet.size());
-		ConnectionExperiment connTest = new ConnectionExperiment(true);
-		connTest.pushNodesToTest(testSet);
-		connTest.run();
-		System.out.println("con test found " + connTest.getReachableNodes().size());
-	}
-
 }
