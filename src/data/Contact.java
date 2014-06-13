@@ -1,10 +1,11 @@
 package data;
 
+import java.io.Serializable;
 import java.net.*;
 
 import net.Node;
 
-public class Contact {
+public class Contact implements Serializable{
 
 	private InetAddress myIp;
 	private int myPort;
@@ -54,5 +55,9 @@ public class Contact {
 	public boolean equals(Object rhs){
 		Contact rhsContact = (Contact)rhs;
 		return this.myIp.equals(rhsContact.myIp) && this.myPort == rhsContact.myPort;
+	}
+	
+	public String toString(){
+		return this.myIp.toString() + ":" + this.myPort;
 	}
 }
