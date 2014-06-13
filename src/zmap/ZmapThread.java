@@ -12,6 +12,8 @@ public class ZmapThread implements Runnable {
 	private ObjectInputStream in;
 	private ObjectOutputStream out;
 
+	private static final String FILE_DIR = "/home/pendgaft/scratch/zmap/";
+
 	public ZmapThread(Socket connection) throws IOException {
 		this.conn = connection;
 		this.in = new ObjectInputStream(this.conn.getInputStream());
@@ -30,10 +32,25 @@ public class ZmapThread implements Runnable {
 			for (Contact tContact : trialSet) {
 				System.out.println(tContact.toString());
 			}
+			
+			/*
+			 * Write hosts to a file for zmap to white list
+			 */
+			String whiteFileName = FILE_DIR + this.conn.getInetAddress() + this.conn.getPort();
+			BufferedWriter whiteListFile = new BufferedWriter(new FileWriter(whiteFileName));
+			for(Contact tContact: trialSet){
+				if(tContact.getPort() == 8333){
+					whiteListFile.write(tContact.getIp().toString().split("/")[1] + "\n");
+				}
+			}
+			whiteListFile.close();
 
-			// TODO write to file
-
-			// TODO invoke zmap
+			//TODO zmap invoke
+			System.out.println("Strating zmap");
+			Runtime rt = Runtime.getRuntime();
+			//Process childProcess = rt.exec("zmap");
+			//childProcess.waitFor();
+			System.out.println("Zmap finished");
 
 			// TODO read file into data structure
 
@@ -42,10 +59,14 @@ public class ZmapThread implements Runnable {
 
 			System.out.println("Starting set write of " + returnSet.size() + " elements");
 			this.out.writeObject(returnSet);
-			this.conn.close();
-		} catch (IOException | ClassNotFoundException e) {
+		} catch (IOException | InterruptedException | ClassNotFoundException e) {
 			e.printStackTrace();
 		}
 
+		try {
+			this.conn.close();
+		} catch (IOException e) {
+
+		}
 	}
 }
