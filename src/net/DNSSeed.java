@@ -13,8 +13,10 @@ public class DNSSeed {
 	 *   seed.bitcoin.sipa.be - 60
 	 *   dnsseed.bitcoin.dashjr.org - 60
 	 */
+//	private static final String[] HOSTS = { "seed.bitcoinstats.com", "bitseed.xf2.org", 
+//			"seed.bitcoin.sipa.be", "dnsseed.bitcoin.dashjr.org" };
 	private static final String[] HOSTS = { "seed.bitcoinstats.com", "bitseed.xf2.org", 
-			"seed.bitcoin.sipa.be", "dnsseed.bitcoin.dashjr.org" };
+		"seed.bitcoin.sipa.be" };
 
 	public DNSSeed(String canonName) {
 		this.dnsName = canonName;
