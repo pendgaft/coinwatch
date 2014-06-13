@@ -28,6 +28,13 @@ public class ZmapThread implements Runnable {
 		try {
 			System.out.println("Starting set read.");
 			Set<Contact> trialSet = (Set<Contact>) this.in.readObject();
+			Set<Contact> removeSet = new HashSet<Contact>();
+			for(Contact tContact: trialSet){
+				if(tContact.getIp() instanceof Inet6Address){
+					removeSet.add(tContact);
+				}
+			}
+			trialSet.removeAll(removeSet);
 			System.out.println("Finished set read: " + trialSet.size() + " elements");
 			Set<Contact> returnSet = new HashSet<Contact>();
 
@@ -49,7 +56,7 @@ public class ZmapThread implements Runnable {
 			System.out.println("Strating zmap");
 			Runtime rt = Runtime.getRuntime();
 			Process childProcess = rt.exec("zmap -w " + whiteFileName + " -o " + whiteFileName
-					+ "-out -S 192.168.1.69 -P 5 -c 15 -i p34p1 -p 8333");
+					+ "-out -S 192.168.1.69 -P 5 -c 30 -i p34p1 -p 8333 -B 1M");
 			childProcess.waitFor();
 			System.out.println("Zmap finished");
 
