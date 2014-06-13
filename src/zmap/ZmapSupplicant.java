@@ -5,6 +5,7 @@ import java.io.*;
 import java.util.*;
 
 import data.Contact;
+import experiment.ConnectionExperiment;
 
 public class ZmapSupplicant {
 
@@ -12,9 +13,10 @@ public class ZmapSupplicant {
 	private ObjectOutputStream out;
 	private ObjectInputStream in;
 	public static int DEFAULT_ZMAP_PORT = 12001;
+	public static String DEFAULT_HOME_IP = "209.98.139.69";
 
-	public ZmapSupplicant(String host) throws IOException {
-		this.serverConnection = new Socket(host, ZmapSupplicant.DEFAULT_ZMAP_PORT);
+	public ZmapSupplicant() throws IOException {
+		this.serverConnection = new Socket(ZmapSupplicant.DEFAULT_HOME_IP, ZmapSupplicant.DEFAULT_ZMAP_PORT);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -36,16 +38,25 @@ public class ZmapSupplicant {
 		return returnedSet;
 	}
 
-	public static void main(String[] args) throws IOException {
-		ZmapSupplicant self = new ZmapSupplicant("127.0.0.1");
-		Set<Contact> testSet = new HashSet<Contact>();
-		testSet.add(new Contact(InetAddress.getByName("9.9.9.9"), 1515, 0, false));
-		testSet.add(new Contact(InetAddress.getByName("10.9.9.9"), 1515, 0, false));
+	public static void main(String[] args) throws IOException, InterruptedException {
 
-		Set<Contact> retSet = self.checkAddresses(testSet);
-		for (Contact tContact : retSet) {
-			System.out.println(tContact.toString());
+		Set<Contact> testSet = ConnectionExperiment.dnsBootStrap();
+		Set<Contact> toRemove = new HashSet<Contact>();
+		for (Contact tContact : testSet) {
+			if (tContact.getIp() instanceof Inet6Address) {
+				toRemove.add(tContact);
+			}
 		}
+		testSet.removeAll(toRemove);
+		System.out.println("Done loading test set");
+
+		ZmapSupplicant self = new ZmapSupplicant("192.168.1.69");
+		Set<Contact> retSet = self.checkAddresses(testSet);
+		System.out.println("zmap found " + retSet.size());
+		ConnectionExperiment connTest = new ConnectionExperiment(true);
+		connTest.pushNodesToTest(testSet);
+		connTest.run();
+		System.out.println("con test found " + connTest.getReachableNodes().size());
 	}
 
 }
