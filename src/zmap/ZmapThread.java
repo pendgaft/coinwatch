@@ -55,10 +55,11 @@ public class ZmapThread implements Runnable {
 			 */
 			System.out.println("Strating zmap");
 			Runtime rt = Runtime.getRuntime();
+			long start = System.currentTimeMillis();
 			Process childProcess = rt.exec("zmap -w " + whiteFileName + " -o " + whiteFileName
-					+ "-out -S 192.168.1.69 -P 5 -c 30 -i p34p1 -p 8333 -B 1M");
+					+ "-out -S 192.168.1.69 -P 5 -c 30 -i p34p1 -p 8333 -B 100K");
 			childProcess.waitFor();
-			System.out.println("Zmap finished");
+			System.out.println("Zmap finished in " + (System.currentTimeMillis() - start)/1000);
 
 			/*
 			 * Read the results of the scan, load into set
