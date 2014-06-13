@@ -15,8 +15,7 @@ import experiment.threading.ConnectorThread;
 
 public class ConnectionExperiment {
 
-	private static final String[] HOSTS = { "seed.bitcoinstats.com", "bitseed.xf2.org", "seed.bitcoin.sipa.be",
-			"dnsseed.bitcoin.dashjr.org" };
+	private static final String[] HOSTS = { "seed.bitcoinstats.com", "bitseed.xf2.org", "seed.bitcoin.sipa.be" };
 
 	private static final int THREAD_COUNT = 20;
 
@@ -31,10 +30,9 @@ public class ConnectionExperiment {
 		this.nodesToTest = new HashSet<Contact>();
 		this.successfulNodes = new HashSet<Node>();
 
+		this.expLogger = Logger.getLogger(Constants.HARVEST_LOG);
 		if (generateOwnLogger) {
-			// TODO implement
-		} else {
-			this.expLogger = Logger.getLogger(Constants.HARVEST_LOG);
+			//TODO impl
 		}
 
 		/*
