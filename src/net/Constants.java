@@ -21,6 +21,8 @@ public class Constants {
 	public static final String ADDR_CMD = "addr";
 
 	public static final String HARVEST_LOG = "experiment.harvestlog";
+	
+	public static final String LOG_DIR = "logs/";
 
 	public static InetAddress SrcIP = null;
 	public static Random NON_SEC_RNG = new Random();

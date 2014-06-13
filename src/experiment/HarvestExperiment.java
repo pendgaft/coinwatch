@@ -5,6 +5,8 @@ import java.util.*;
 import java.io.*;
 import java.util.logging.*;
 
+import zmap.ZmapSupplicant;
+
 import logging.LogHelper;
 
 import net.Constants;
@@ -34,9 +36,9 @@ public class HarvestExperiment {
 		SimpleDateFormat df = new SimpleDateFormat("yyyy.MM.dd-HH:mm:ss");
 		String tsString = df.format(new Date());
 		try {
-			
-			logHandler = new FileHandler("logs/harvest-" + tsString + ".out");
-			summaryHandler = new FileHandler("logs/summary-" + tsString + ".out");
+
+			logHandler = new FileHandler(Constants.LOG_DIR + "harvest-" + tsString + ".out");
+			summaryHandler = new FileHandler(Constants.LOG_DIR + "summary-" + tsString + ".out");
 		} catch (SecurityException | IOException e) {
 			e.printStackTrace();
 			System.exit(-1);
@@ -103,12 +105,14 @@ public class HarvestExperiment {
 		this.expLogger.info("Found nodes: " + this.harvestedContacts.size());
 	}
 
-	public void manageMultiRoundCollection(ConnectionExperiment connTest) throws InterruptedException {
+	public void manageMultiRoundCollection(ConnectionExperiment connTest) throws InterruptedException, IOException {
 		Set<Contact> allKnownNodes = new HashSet<Contact>();
 		Set<Node> reachableNodes = new HashSet<Node>();
 		Set<Node> toHarvest = new HashSet<Node>();
 		int newNodesFound = 0;
 		long startTime = System.currentTimeMillis();
+
+		ZmapSupplicant zmapper = new ZmapSupplicant();
 
 		// TODO this should be thresholded
 		for (int counter = 0; counter < 3; counter++) {
@@ -126,11 +130,12 @@ public class HarvestExperiment {
 
 				this.pushNodesToTest(toHarvest);
 				this.run();
-				
+
 				/*
-				 * Let's not leave all of those threads running if we don't need them
+				 * Let's not leave all of those threads running if we don't need
+				 * them
 				 */
-				for(Node tNode: toHarvest){
+				for (Node tNode : toHarvest) {
 					tNode.shutdownNode();
 				}
 
@@ -139,7 +144,13 @@ public class HarvestExperiment {
 				allKnownNodes.addAll(harvestNodes);
 				newNodesFound = harvestNodes.size();
 
-				connTest.pushNodesToTest(harvestNodes);
+				long start = System.currentTimeMillis();
+				this.expLogger.warning("Starting zmap on: " + harvestNodes.size() + " nodes");
+				Set<Contact> zmapPassedNodes = zmapper.checkAddresses(harvestNodes);
+				this.expLogger.warning("zmap found " + zmapPassedNodes.size() + " in "
+						+ LogHelper.formatMili(System.currentTimeMillis() - start));
+
+				connTest.pushNodesToTest(zmapPassedNodes);
 				connTest.run();
 
 				toHarvest.clear();
