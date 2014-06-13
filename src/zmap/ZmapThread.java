@@ -76,7 +76,11 @@ public class ZmapThread implements Runnable {
 			inBuffer.close();
 
 			System.out.println("Starting set write of " + returnSet.size() + " elements");
-			this.out.writeObject(returnSet);
+			this.out.writeObject(returnSet.size());
+			for(Contact tContact: returnSet){
+				this.out.writeObject(tContact);
+			}
+			System.out.println("Done with write.");
 			
 			/*
 			 * Clean up the temp files

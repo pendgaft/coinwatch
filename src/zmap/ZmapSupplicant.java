@@ -24,11 +24,21 @@ public class ZmapSupplicant {
 		this.out = new ObjectOutputStream(this.serverConnection.getOutputStream());
 		this.in = new ObjectInputStream(this.serverConnection.getInputStream());
 
-		Set<Contact> returnedSet = null;
+		Set<Contact> returnedSet = new HashSet<Contact>();
 
 		this.out.writeObject(nodesToTest);
 		try {
-			returnedSet = (Set<Contact>) this.in.readObject();
+			int number = (Integer)this.in.readObject();
+			int check = number / 10;
+			for(int counter = 0; counter < number; counter++){
+				  Contact tContact = (Contact)this.in.readObject();
+				  returnedSet.add(tContact);
+				  
+				  if(counter == check){
+					  System.out.println("" + (check * 100 / number) + "% rcvd");
+					  check += number / 10;
+				  }
+			}
 		} catch (ClassNotFoundException e) {
 			e.printStackTrace();
 		}
