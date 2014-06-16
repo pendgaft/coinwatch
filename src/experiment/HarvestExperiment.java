@@ -5,7 +5,7 @@ import java.util.*;
 import java.io.*;
 import java.util.logging.*;
 
-import zmap.ZmapSupplicant;
+import zmap.ZmapSelf;
 
 import logging.LogHelper;
 
@@ -112,7 +112,7 @@ public class HarvestExperiment {
 		int newNodesFound = 0;
 		long startTime = System.currentTimeMillis();
 
-		ZmapSupplicant zmapper = new ZmapSupplicant();
+		ZmapSelf zmapper = new ZmapSelf();
 
 		// TODO this should be thresholded
 		for (int counter = 0; counter < 3; counter++) {
@@ -150,6 +150,11 @@ public class HarvestExperiment {
 				this.expLogger.warning("zmap found " + zmapPassedNodes.size() + " in "
 						+ LogHelper.formatMili(System.currentTimeMillis() - start));
 
+				/*
+				 * Sleep for a bit to let the network bits "recover" from the zmap
+				 */
+				Thread.sleep(60000);
+				
 				connTest.pushNodesToTest(zmapPassedNodes);
 				connTest.run();
 
