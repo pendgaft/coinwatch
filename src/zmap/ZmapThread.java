@@ -4,6 +4,8 @@ import java.net.*;
 import java.io.*;
 import java.util.*;
 
+import logging.LogHelper;
+
 import net.Constants;
 
 import data.Contact;
@@ -11,33 +13,40 @@ import data.Contact;
 public class ZmapThread implements Runnable {
 
 	private Socket conn;
-	private ObjectInputStream in;
-	private ObjectOutputStream out;
+	private InetAddress requesterIP;
 
 	private static final String FILE_DIR = "/home/pendgaft/scratch/zmap/";
 
 	public ZmapThread(Socket connection) throws IOException {
 		this.conn = connection;
-		this.in = new ObjectInputStream(this.conn.getInputStream());
-		this.out = new ObjectOutputStream(this.conn.getOutputStream());
+		this.requesterIP = this.conn.getInetAddress();
 	}
 
 	@Override
 	@SuppressWarnings("unchecked")
 	public void run() {
 		try {
+			/*
+			 * Read the target IPs from the peer
+			 */
 			System.out.println("Starting set read.");
-			Set<Contact> trialSet = (Set<Contact>) this.in.readObject();
+			ObjectInputStream oIn = new ObjectInputStream(this.conn.getInputStream());
+			Set<Contact> trialSet = (Set<Contact>) oIn.readObject();
+			this.conn.close();
+			System.out.println("Done with read of " + trialSet.size() + " items.");
+
+			/*
+			 * Prune out all IPv6 and non 8333 port contacts
+			 */
 			Set<Contact> removeSet = new HashSet<Contact>();
-			for(Contact tContact: trialSet){
-				if(tContact.getIp() instanceof Inet6Address){
+			for (Contact tContact : trialSet) {
+				if (tContact.getIp() instanceof Inet6Address || tContact.getPort() != Constants.DEFAULT_PORT) {
 					removeSet.add(tContact);
 				}
 			}
 			trialSet.removeAll(removeSet);
-			System.out.println("Finished set read: " + trialSet.size() + " elements");
-			Set<Contact> returnSet = new HashSet<Contact>();
-
+			System.out.println("Finished set prune with " + trialSet.size() + " elements");
+			
 			/*
 			 * Write hosts to a file for zmap to white list
 			 */
@@ -59,28 +68,33 @@ public class ZmapThread implements Runnable {
 			Process childProcess = rt.exec("zmap -w " + whiteFileName + " -o " + whiteFileName
 					+ "-out -S 192.168.1.69 -P 5 -c 30 -i p34p1 -p 8333 -B 100K");
 			childProcess.waitFor();
-			System.out.println("Zmap finished in " + (System.currentTimeMillis() - start)/1000);
+			System.out.println("Zmap finished in " + LogHelper.formatMili(System.currentTimeMillis() - start));
 
+			
 			/*
 			 * Read the results of the scan, load into set
 			 */
+			Set<Contact> returnSet = new HashSet<Contact>();
 			BufferedReader inBuffer = new BufferedReader(new FileReader(whiteFileName + "-out"));
 			// eat the first line as it is just the word "saddr"
 			inBuffer.readLine();
 			while (inBuffer.ready()) {
 				String readStr = inBuffer.readLine().trim();
-				if(readStr.length() > 0){
-					returnSet.add(new Contact(InetAddress.getByName(readStr), Constants.DEFAULT_PORT, 0 , false));
+				if (readStr.length() > 0) {
+					returnSet.add(new Contact(InetAddress.getByName(readStr), Constants.DEFAULT_PORT, 0, false));
 				}
 			}
 			inBuffer.close();
 
+			/*
+			 * Write the output to the client after phoning home
+			 */
 			System.out.println("Starting set write of " + returnSet.size() + " elements");
-			this.out.writeObject(returnSet.size());
-			for(Contact tContact: returnSet){
-				this.out.writeObject(tContact);
-			}
+			Socket clientCon = new Socket(this.requesterIP, ZmapSupplicant.DEFAULT_ZMAP_PORT);
+			ObjectOutputStream oOut = new ObjectOutputStream(clientCon.getOutputStream());
+			oOut.writeObject(returnSet);
 			System.out.println("Done with write.");
+			clientCon.close();
 			
 			/*
 			 * Clean up the temp files
@@ -91,12 +105,6 @@ public class ZmapThread implements Runnable {
 			whiteFile.delete();
 		} catch (IOException | InterruptedException | ClassNotFoundException e) {
 			e.printStackTrace();
-		}
-
-		try {
-			this.conn.close();
-		} catch (IOException e) {
-
 		}
 	}
 }
