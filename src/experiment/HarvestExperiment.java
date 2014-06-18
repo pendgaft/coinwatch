@@ -6,6 +6,7 @@ import java.io.*;
 import java.util.logging.*;
 
 import zmap.ZmapSelf;
+import zmap.ZmapSupplicant;
 
 import logging.LogHelper;
 
@@ -112,7 +113,8 @@ public class HarvestExperiment {
 		int newNodesFound = 0;
 		long startTime = System.currentTimeMillis();
 
-		ZmapSelf zmapper = new ZmapSelf();
+		//ZmapSelf zmapper = new ZmapSelf();
+		ZmapSupplicant zmapper = new ZmapSupplicant();
 
 		// TODO this should be thresholded
 		for (int counter = 0; counter < 3; counter++) {
