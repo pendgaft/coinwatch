@@ -15,7 +15,7 @@ public class ZmapThread implements Runnable {
 	private Socket conn;
 	private InetAddress requesterIP;
 
-	private static final String FILE_DIR = "/home/pendgaft/scratch/zmap/";
+	private static final String FILE_DIR = "/home/schuch/zmap/logs/";
 
 	public ZmapThread(Socket connection) throws IOException {
 		this.conn = connection;
@@ -66,7 +66,7 @@ public class ZmapThread implements Runnable {
 			Runtime rt = Runtime.getRuntime();
 			long start = System.currentTimeMillis();
 			Process childProcess = rt.exec("zmap -w " + whiteFileName + " -o " + whiteFileName
-					+ "-out -S 192.168.1.69 -P 5 -c 30 -i p34p1 -p 8333 -B 100K");
+					+ "-out -S 160.94.77.70 -P 5 -c 30 -i eth0 -p 8333 -B 200K -q");
 			childProcess.waitFor();
 			System.out.println("Zmap finished in " + LogHelper.formatMili(System.currentTimeMillis() - start));
 
