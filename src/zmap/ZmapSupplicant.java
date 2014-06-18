@@ -10,10 +10,9 @@ public class ZmapSupplicant {
 
 	private Socket serverConnection;
 	public static int DEFAULT_ZMAP_PORT = 12001;
-	public static String DEFAULT_HOME_IP = "209.98.139.69";
+        public static String DEFAULT_HOME_IP = "160.94.77.70";
 
-	public ZmapSupplicant() throws IOException {
-		this.serverConnection = new Socket(ZmapSupplicant.DEFAULT_HOME_IP, ZmapSupplicant.DEFAULT_ZMAP_PORT);
+	public ZmapSupplicant() {
 	}
 
 	@SuppressWarnings("unchecked")
@@ -23,7 +22,8 @@ public class ZmapSupplicant {
 		/*
 		 * Write to the server and hang up
 		 */
-		ObjectOutputStream oOut = new ObjectOutputStream(this.serverConnection.getOutputStream());
+		this.serverConnection = new Socket(ZmapSupplicant.DEFAULT_HOME_IP, ZmapSupplicant.DEFAULT_ZMAP_PORT);
+         	   ObjectOutputStream oOut = new ObjectOutputStream(this.serverConnection.getOutputStream());
 		oOut.writeObject(nodesToTest);
 		this.serverConnection.close();
 		
