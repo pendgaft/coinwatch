@@ -97,7 +97,8 @@ public class HarvestExperiment {
 
 		for (int counter = 0; counter < this.nodesToTest.size(); counter++) {
 			Node finishedNode = this.holdingContainer.fetchCompleted();
-			this.harvestedContacts.addAll(finishedNode.getContacts());
+			this.harvestedContacts.addAll(finishedNode.getContacts(true));
+			finishedNode.shutdownNode();
 		}
 
 		long time = (System.currentTimeMillis() - startTime);
@@ -132,14 +133,6 @@ public class HarvestExperiment {
 
 				this.pushNodesToTest(toHarvest);
 				this.run();
-
-				/*
-				 * Let's not leave all of those threads running if we don't need
-				 * them
-				 */
-				for (Node tNode : toHarvest) {
-					tNode.shutdownNode();
-				}
 
 				Set<Contact> harvestNodes = this.getHarvestedContacts();
 				harvestNodes.removeAll(allKnownNodes);
