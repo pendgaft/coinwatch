@@ -170,10 +170,13 @@ public class Node {
 		this.learnedContacts.clear();
 	}
 
-	public Set<Contact> getContacts() {
+	public Set<Contact> getContacts(boolean reset) {
 		HashSet<Contact> retSet = new HashSet<Contact>();
 		synchronized(this.learnedContacts){
 			retSet.addAll(this.learnedContacts);
+			if(reset){
+			    this.learnedContacts.clear();
+			}
 		}
 		return retSet;
 	}
