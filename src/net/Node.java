@@ -98,7 +98,7 @@ public class Node {
 		this.connectionState += 1;
 
 		try {
-			this.transactionFlag.tryAcquire(2, Constants.TRANSACTION_TIMEOUT, Constants.TRANSACTION_TIMEOUT_UNIT);
+			this.transactionFlag.tryAcquire(2, Constants.CONNECT_TIMEOUT, Constants.CONNECT_TIMEOUT_UNIT);
 		} catch (InterruptedException e) {
 			try {
 				this.nodeSocket.close();

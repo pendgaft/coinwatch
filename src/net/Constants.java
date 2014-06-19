@@ -9,7 +9,8 @@ public class Constants {
 
 	public static final int DEFAULT_PORT = 8333;
 
-	public static final int CONNECT_TIMEOUT = 5000;
+	public static final int CONNECT_TIMEOUT = 10000;
+	public static final TimeUnit CONNECT_TIMEOUT_UNIT = TimeUnit.MILLISECONDS;
 	public static final long TRANSACTION_TIMEOUT = 5000;
 	public static final TimeUnit TRANSACTION_TIMEOUT_UNIT = TimeUnit.MILLISECONDS;
 
