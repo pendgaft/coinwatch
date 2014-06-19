@@ -137,6 +137,15 @@ public class ConnectionExperiment {
 	 */
 	public static void main(String[] args) throws InterruptedException, IOException {
 		Set<Contact> testNodes = ConnectionExperiment.dnsBootStrap();
+		
+		BufferedWriter outBuff = new BufferedWriter(new FileWriter("zmapTest.out"));
+		for(Contact tContact: testNodes){
+			if(!tContact.isIPv6()){
+				outBuff.write(tContact.getIp().toString().split("/")[1] + "/32\n");
+			}
+		}
+		outBuff.close();
+		
 		ConnectionExperiment test = new ConnectionExperiment(true);
 		test.pushNodesToTest(testNodes);
 		test.run();
