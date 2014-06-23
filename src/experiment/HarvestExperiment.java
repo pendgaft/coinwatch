@@ -34,7 +34,7 @@ public class HarvestExperiment {
 		 */
 		FileHandler logHandler = null;
 		FileHandler summaryHandler = null;
-		SimpleDateFormat df = new SimpleDateFormat("yyyy.MM.dd-HH:mm:ss");
+		SimpleDateFormat df = new SimpleDateFormat("yyyy.MM.dd-HH.mm.ss");
 		String tsString = df.format(new Date());
 		try {
 
@@ -97,7 +97,9 @@ public class HarvestExperiment {
 
 		for (int counter = 0; counter < this.nodesToTest.size(); counter++) {
 			Node finishedNode = this.holdingContainer.fetchCompleted();
-			this.harvestedContacts.addAll(finishedNode.getContacts(true));
+			Set<Contact> harvestedContacts = finishedNode.getContacts(true);
+			this.expLogger.config("Harvested " + harvestedContacts.size());
+			this.harvestedContacts.addAll(harvestedContacts);
 			finishedNode.shutdownNode();
 		}
 
