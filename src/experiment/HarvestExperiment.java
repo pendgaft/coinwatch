@@ -23,7 +23,7 @@ public class HarvestExperiment {
 	private ExperimentContainer holdingContainer;
 	private Logger expLogger;
 
-	private static final int THREAD_COUNT = 10;
+	private static final int THREAD_COUNT = 60;
 	public static final int MIN_GAIN = 50;
 
 	public HarvestExperiment() {
