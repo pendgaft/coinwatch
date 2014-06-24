@@ -1,5 +1,7 @@
 package logging;
 
+import java.util.*;
+
 public class LogHelper {
 
 	public static String formatMili(long timeDelta){
@@ -12,6 +14,30 @@ public class LogHelper {
 		} else{
 			return "" + (double)timeDelta / 3600000.0 + " hours";
 		}
+	}
+	
+	public List<String> buildDecendingList(HashMap<String, Double> values){
+		List<String> retList = new ArrayList<String>(values.size());
+		Set<String> notPlaced = new HashSet<String>();
+		notPlaced.addAll(values.keySet());
+		
+		
+		while(notPlaced.size() > 0){
+			double largest = Double.NEGATIVE_INFINITY;
+			String best = null;
+			
+			for(String tKey: notPlaced){
+				if(values.get(tKey) > largest){
+					largest = values.get(tKey);
+					best = tKey;
+				}
+			}
+			
+			notPlaced.remove(best);
+			retList.add(best);
+		}
+		
+		return retList;
 	}
 	
 }
