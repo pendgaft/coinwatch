@@ -135,6 +135,30 @@ public class ConnectionExperiment {
 		this.expLogger.info("failed via conn timeout " + connTO);
 		this.expLogger.info("failed via handshake timeout " + handTO);
 		this.expLogger.info("failed via other io " + ioError);
+
+		/*
+		 * Log user agent population
+		 */
+		HashMap<String, Double> uaMap = this.buildUserAgentCount();
+		List<String> orderList = LogHelper.buildDecendingList(uaMap);
+		for (int counter = 0; counter < orderList.size(); counter++) {
+			this.expLogger.config("ua position " + (counter + 1) + " " + orderList.get(counter) + " with "
+					+ uaMap.get(orderList.get(counter)));
+		}
+	}
+
+	private HashMap<String, Double> buildUserAgentCount() {
+		HashMap<String, Double> retMap = new HashMap<String, Double>();
+
+		for (Node tNode : this.successfulNodes) {
+			String uaStr = tNode.getRemoteUserAgent();
+			if (!retMap.containsKey(uaStr)) {
+				retMap.put(uaStr, 0.0);
+			}
+			retMap.put(uaStr, retMap.get(uaStr) + 1.0);
+		}
+
+		return retMap;
 	}
 
 	public static Set<Contact> dnsBootStrap() {

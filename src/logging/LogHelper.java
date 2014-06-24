@@ -16,7 +16,7 @@ public class LogHelper {
 		}
 	}
 	
-	public List<String> buildDecendingList(HashMap<String, Double> values){
+	public static List<String> buildDecendingList(HashMap<String, Double> values){
 		List<String> retList = new ArrayList<String>(values.size());
 		Set<String> notPlaced = new HashSet<String>();
 		notPlaced.addAll(values.keySet());
