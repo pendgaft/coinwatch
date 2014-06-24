@@ -10,6 +10,7 @@ import data.Contact;
 import logging.LogHelper;
 import net.Constants;
 import net.Node;
+import net.Node.NodeErrorCode;
 
 import experiment.threading.ConnectorThread;
 
@@ -32,7 +33,7 @@ public class ConnectionExperiment {
 
 		this.expLogger = Logger.getLogger(Constants.HARVEST_LOG);
 		if (generateOwnLogger) {
-			//TODO impl
+			// TODO impl
 		}
 
 		/*
@@ -95,11 +96,31 @@ public class ConnectionExperiment {
 		 * Get nodes back, check for success, file into the correct set
 		 */
 		int passed = 0;
+		int failed = 0;
+		int connTO = 0;
+		int handTO = 0;
+		int ioError = 0;
 		for (int counter = 0; counter < ipv4Addresses.size(); counter++) {
 			Node doneNode = this.workHolder.fetchCompleted();
 			if (doneNode.thinksConnected()) {
 				passed++;
 				this.successfulNodes.add(doneNode);
+			} else {
+				failed++;
+				NodeErrorCode ec = doneNode.getErronNo();
+				switch (ec) {
+				case CONN_TIMEOUT:
+					connTO++;
+					break;
+				case HANDSHAKE_TIMEOUT:
+					handTO++;
+					break;
+				case MISC_IO:
+					ioError++;
+					break;
+				default:
+					break;
+				}
 			}
 		}
 		long stop = System.currentTimeMillis();
@@ -110,7 +131,10 @@ public class ConnectionExperiment {
 		this.expLogger.warning("Connection took: " + LogHelper.formatMili(stop - start));
 		this.expLogger.info("IPv4," + ipv4Addresses.size() + "," + this.nodesToTest.size());
 		this.expLogger.info("reachable," + passed + "," + ipv4Addresses.size());
-
+		this.expLogger.info("failed to conn " + failed);
+		this.expLogger.info("failed via conn timeout " + connTO);
+		this.expLogger.info("failed via handshake timeout " + handTO);
+		this.expLogger.info("failed via other io " + ioError);
 	}
 
 	public static Set<Contact> dnsBootStrap() {
@@ -137,18 +161,50 @@ public class ConnectionExperiment {
 	 */
 	public static void main(String[] args) throws InterruptedException, IOException {
 		Set<Contact> testNodes = ConnectionExperiment.dnsBootStrap();
-		
-		BufferedWriter outBuff = new BufferedWriter(new FileWriter("zmapTest.out"));
-		for(Contact tContact: testNodes){
-			if(!tContact.isIPv6()){
-				outBuff.write(tContact.getIp().toString().split("/")[1] + "/32\n");
-			}
-		}
-		outBuff.close();
-		
+
 		ConnectionExperiment test = new ConnectionExperiment(true);
 		test.pushNodesToTest(testNodes);
 		test.run();
+
+		Set<Node> reachableNodes = test.getReachableNodes();
+		int headOfBlockChain = 0;
+		int reportingThisBlock = 0;
+		HashMap<String, Integer> uaCounts = new HashMap<String, Integer>();
+		for (Node tNode : reachableNodes) {
+			headOfBlockChain = Math.max(headOfBlockChain, tNode.getLastBlockSeen());
+			if (tNode.getLastBlockSeen() == headOfBlockChain) {
+				reportingThisBlock++;
+			}
+			String ua = tNode.getRemoteUserAgent();
+			if (ua != null) {
+				if (!uaCounts.containsKey(ua)) {
+					uaCounts.put(ua, 0);
+				}
+				uaCounts.put(ua, uaCounts.get(ua) + 1);
+			}
+		}
+
+		System.out.println("Block chain head: " + headOfBlockChain + "(" + reportingThisBlock + " nodes)");
+		List<String> uaList = new ArrayList<String>(uaCounts.size());
+		for (int counter = 0; counter < uaCounts.size(); counter++) {
+			int largest = 0;
+			String bestUA = null;
+			for (String tUA : uaCounts.keySet()) {
+				if (uaList.contains(tUA)) {
+					continue;
+				}
+				if (uaCounts.get(tUA) > largest) {
+					largest = uaCounts.get(tUA);
+					bestUA = tUA;
+				}
+			}
+			uaList.add(bestUA);
+		}
+		System.out.println("UA List: ");
+		for (int counter = 0; counter < uaList.size(); counter++) {
+			System.out.println(uaList.get(counter) + " : " + uaCounts.get(uaList.get(counter)));
+		}
+
 		test.shutdown();
 	}
 

@@ -12,4 +12,9 @@ public class RegexCollection {
 	public static Pattern harvestTotalWorkerThreadPattern = Pattern.compile("final size (\\d+)");
 	public static Pattern harvestTotalParentThreadPattern = Pattern.compile("Harvested (\\d+)");
 	
+	public static Pattern totalConnFailurePattern = Pattern.compile("failed to conn (\\d+)");
+	public static Pattern failedViaConnTimePattern = Pattern.compile("failed via conn timeout (\\d+)");
+	public static Pattern failedViaHandTimePattern = Pattern.compile("failed via handshake timeout (\\d+)");
+	public static Pattern failedViaIOErrorPattern = Pattern.compile("failed via other io (\\d+)");
+	
 }

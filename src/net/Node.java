@@ -15,25 +15,54 @@ public class Node {
 	private Contact parent;
 
 	private int connectionState;
+	private NodeErrorCode currentErrorNo;
+	
 	private Socket nodeSocket;
 	private InputStream iStream;
 	private OutputStream oStream;
 	private Thread listenerThread;
 
+	private Version remoteVersionMessage;
 	private HashSet<Contact> learnedContacts;
 
 	private Semaphore transactionFlag;
+	
+	
+	public enum NodeErrorCode{
+		CONN_TIMEOUT, HANDSHAKE_TIMEOUT, NONE, MISC_IO
+	}
 
 	public Node(Contact parentContact) {
 		this.parent = parentContact;
 
 		this.connectionState = 0;
+		this.currentErrorNo = NodeErrorCode.NONE;
+		
+		this.nodeSocket = null;
 		this.iStream = null;
 		this.oStream = null;
 		this.listenerThread = null;
 
+		this.remoteVersionMessage = null;
 		this.learnedContacts = new HashSet<Contact>();
 
+		this.transactionFlag = new Semaphore(0);
+	}
+
+	public Node(Socket incSocket) throws IOException {
+		this.parent = null;
+
+		this.connectionState = 0;
+		this.currentErrorNo = NodeErrorCode.NONE;
+		
+		this.nodeSocket = incSocket;
+		this.iStream = this.nodeSocket.getInputStream();
+		this.oStream = this.nodeSocket.getOutputStream();
+
+		this.listenerThread = null;
+
+		this.remoteVersionMessage = null;
+		this.learnedContacts = new HashSet<Contact>();
 		this.transactionFlag = new Semaphore(0);
 	}
 
@@ -43,6 +72,10 @@ public class Node {
 
 	public boolean thinksConnected() {
 		return this.connectionState == 15;
+	}
+	
+	public NodeErrorCode getErronNo(){
+		return this.currentErrorNo;
 	}
 
 	public boolean connect() {
@@ -55,16 +88,20 @@ public class Node {
 		/*
 		 * Actually open the network connection
 		 */
-		try {
-			this.nodeSocket = new Socket();
-			this.nodeSocket.connect(new InetSocketAddress(this.parent.getIp(), this.parent.getPort()),
-					Constants.CONNECT_TIMEOUT);
-			this.iStream = this.nodeSocket.getInputStream();
-			this.oStream = this.nodeSocket.getOutputStream();
-		} catch (SocketTimeoutException e) {
-			return false;
-		} catch (IOException e) {
-			return false;
+		if (this.nodeSocket == null) {
+			try {
+				this.nodeSocket = new Socket();
+				this.nodeSocket.connect(new InetSocketAddress(this.parent.getIp(), this.parent.getPort()),
+						Constants.CONNECT_TIMEOUT);
+				this.iStream = this.nodeSocket.getInputStream();
+				this.oStream = this.nodeSocket.getOutputStream();
+			} catch (SocketTimeoutException e) {
+				this.currentErrorNo = NodeErrorCode.CONN_TIMEOUT;
+				return false;
+			} catch (IOException e) {
+				this.currentErrorNo = NodeErrorCode.MISC_IO;
+				return false;
+			}
 		}
 
 		/*
@@ -105,15 +142,21 @@ public class Node {
 			} catch (IOException e2) {
 				// Can be caught silently, we're already dying
 			}
+			this.currentErrorNo = NodeErrorCode.HANDSHAKE_TIMEOUT;
 			return false;
+		}
+
+		if (this.parent == null) {
+			// TODO populate based on the version packet
 		}
 
 		return this.thinksConnected();
 	}
 
-	public void recievedVersion() {
+	public void recievedVersion(Version incVerMsg) {
 
 		this.connectionState += 4;
+		this.remoteVersionMessage = incVerMsg;
 
 		VerAck verAckPacket = new VerAck();
 		try {
@@ -172,21 +215,37 @@ public class Node {
 
 	public Set<Contact> getContacts(boolean reset) {
 		HashSet<Contact> retSet = new HashSet<Contact>();
-		synchronized(this.learnedContacts){
+		synchronized (this.learnedContacts) {
 			retSet.addAll(this.learnedContacts);
-			if(reset){
-			    this.learnedContacts.clear();
+			if (reset) {
+				this.learnedContacts.clear();
 			}
 		}
 		return retSet;
 	}
-	
-	public int getContactCount(){
+
+	public int getContactCount() {
 		int size = 0;
-		synchronized(this.learnedContacts){
+		synchronized (this.learnedContacts) {
 			size = this.learnedContacts.size();
 		}
-		
+
 		return size;
+	}
+
+	public String getRemoteUserAgent() {
+		if (this.remoteVersionMessage != null) {
+			return this.remoteVersionMessage.getUserAgent();
+		} else {
+			return null;
+		}
+	}
+
+	public int getLastBlockSeen() {
+		if (this.remoteVersionMessage != null) {
+			return this.remoteVersionMessage.getLastBlockSeen();
+		} else {
+			return 0;
+		}
 	}
 }
