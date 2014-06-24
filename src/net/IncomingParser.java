@@ -2,6 +2,8 @@ package net;
 
 import java.io.*;
 
+import net.Node.NodeErrorCode;
+
 import message.Version;
 import message.CommonMessage;
 
@@ -36,7 +38,7 @@ public class IncomingParser implements Runnable {
 				}
 			}
 		} catch (IOException e) {
-			this.parent.shutdownNode();
+			this.parent.shutdownNode(NodeErrorCode.INCOMING_FAIL);
 		}
 	}
 

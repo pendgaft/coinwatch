@@ -29,7 +29,7 @@ public class Node {
 	
 	
 	public enum NodeErrorCode{
-		CONN_TIMEOUT, HANDSHAKE_TIMEOUT, NONE, MISC_IO
+		CONN_TIMEOUT, HANDSHAKE_TIMEOUT, NONE, MISC_IO, OTHERSIDE_CLOSE, INCOMING_FAIL
 	}
 
 	public Node(Contact parentContact) {
@@ -130,6 +130,7 @@ public class Node {
 			} catch (IOException e2) {
 				// Can be caught silently, we're already dying
 			}
+			this.currentErrorNo = NodeErrorCode.MISC_IO;
 			return false;
 		}
 		this.connectionState += 1;
@@ -184,7 +185,11 @@ public class Node {
 	}
 
 	// XXX is there an issue with multiple places calling this at the same time?
-	public void shutdownNode() {
+	public void shutdownNode(NodeErrorCode errno) {
+		if(errno != null){
+			this.currentErrorNo = errno;
+		}
+		
 		this.connectionState = 0;
 		try {
 			this.nodeSocket.close();
@@ -199,7 +204,7 @@ public class Node {
 		try {
 			this.oStream.write(outMsg.getBytes());
 		} catch (IOException e) {
-			this.shutdownNode();
+			this.shutdownNode(NodeErrorCode.MISC_IO);
 		}
 
 		try {

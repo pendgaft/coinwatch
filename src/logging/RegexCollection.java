@@ -15,6 +15,7 @@ public class RegexCollection {
 	public static Pattern failedViaConnTimePattern = Pattern.compile("failed via conn timeout (\\d+)");
 	public static Pattern failedViaHandTimePattern = Pattern.compile("failed via handshake timeout (\\d+)");
 	public static Pattern failedViaIOErrorPattern = Pattern.compile("failed via other io (\\d+)");
+	public static Pattern failedViaIncomingIOErrorPattern = Pattern.compile("failed via incoming io (\\d+)");
 
 	public static Pattern connUASamplePattern = Pattern.compile("ua position (\\d+) (.+) with (\\d+)");
 

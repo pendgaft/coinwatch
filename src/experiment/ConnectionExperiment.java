@@ -100,6 +100,7 @@ public class ConnectionExperiment {
 		int connTO = 0;
 		int handTO = 0;
 		int ioError = 0;
+		int incIOError = 0;
 		for (int counter = 0; counter < ipv4Addresses.size(); counter++) {
 			Node doneNode = this.workHolder.fetchCompleted();
 			if (doneNode.thinksConnected()) {
@@ -118,6 +119,8 @@ public class ConnectionExperiment {
 				case MISC_IO:
 					ioError++;
 					break;
+				case INCOMING_FAIL:
+					incIOError++;
 				default:
 					break;
 				}
@@ -135,6 +138,7 @@ public class ConnectionExperiment {
 		this.expLogger.info("failed via conn timeout " + connTO);
 		this.expLogger.info("failed via handshake timeout " + handTO);
 		this.expLogger.info("failed via other io " + ioError);
+		this.expLogger.info("failed via incoming io " + incIOError);
 
 		/*
 		 * Log user agent population
