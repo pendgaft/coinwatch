@@ -100,7 +100,7 @@ public class HarvestExperiment {
 			Set<Contact> harvestedContacts = finishedNode.getContacts(true);
 			this.expLogger.config("Harvested " + harvestedContacts.size());
 			this.harvestedContacts.addAll(harvestedContacts);
-			finishedNode.shutdownNode();
+			finishedNode.shutdownNode(null);
 		}
 
 		long time = (System.currentTimeMillis() - startTime);
