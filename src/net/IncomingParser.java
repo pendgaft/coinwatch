@@ -2,6 +2,7 @@ package net;
 
 import java.io.*;
 
+import message.Version;
 import message.CommonMessage;
 
 public class IncomingParser implements Runnable {
@@ -21,7 +22,7 @@ public class IncomingParser implements Runnable {
 				String cmdStr = incMessage.getCommand();
 
 				if (cmdStr.equals(Constants.VERSION_CMD)) {
-					this.parent.recievedVersion();
+					this.parent.recievedVersion(new Version(incMessage.getPayload()));
 				} else if (cmdStr.equals(Constants.VERACK_CMD)) {
 					this.parent.recievedVerAck();
 				} else if (cmdStr.equals(Constants.ADDR_CMD)) {
