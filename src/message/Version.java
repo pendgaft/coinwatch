@@ -1,16 +1,17 @@
 package message;
 
 import java.net.*;
-import java.io.*;
 
 import util.ByteOps;
 import net.Constants;
+import data.Contact;
 
 public class Version extends CommonMessage {
 
 	private int versionNumber;
 	private String userAgent;
 	private int lastBlockNumber;
+	private Contact srcContact;
 
 	public static final int DEFAULT_VERSION_NUMBER = 70002;
 	public static final byte[] DEFAULT_SERVICE_BYTES = ByteOps.hexStringToByteArray("0100000000000000");
@@ -30,6 +31,12 @@ public class Version extends CommonMessage {
 		super("version");
 
 		// TODO implement parsing of a version packet
+		this.versionNumber = CommonStructures.extractSmallEndianInt(ByteOps.subArray(incomingMessage, 4, 0));
+		this.srcContact = CommonStructures.extractNoTSNetAddress(ByteOps.subArray(incomingMessage, 26, 4 + 8 + 8 + 26));
+		byte[] uaBytes = ByteOps.subArray(incomingMessage, incomingMessage.length - (4 + 8 + 8 + 26 + 26 + 8), 4 + 8 + 8 + 26 + 26 + 8);
+		int uaSize = CommonStructures.getVarStrSize(uaBytes);
+		this.userAgent = CommonStructures.extractVarString(uaBytes);
+		this.lastBlockNumber = CommonStructures.extractSmallEndianInt(ByteOps.subArray(incomingMessage, 4, 4 + 8 + 8 + 26 + 26 + uaSize));
 	}
 
 	private void buildPayload(InetAddress dest, int destPort, InetAddress src, int srcPort) {
@@ -71,5 +78,21 @@ public class Version extends CommonMessage {
 		ByteOps.appendBytes(ByteOps.hexStringToByteArray("00"), payload, 4 + 8 + 8 + 26 + 26 + 8 + 1 + 4);
 
 		this.setPayload(payload);
+	}
+	
+	public Contact getSourceContact(){
+		return this.srcContact;
+	}
+	
+	public int getVersion(){
+		return this.versionNumber;
+	}
+	
+	public int getLastBlockSeen(){
+		return this.lastBlockNumber;
+	}
+	
+	public String getUserAgent(){
+		return this.userAgent;
 	}
 }

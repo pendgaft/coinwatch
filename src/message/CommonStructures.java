@@ -33,6 +33,7 @@ public class CommonStructures {
 
 	public static int extractSmallEndianInt(byte[] value) {
 		byte[] bigEndianValue = ByteOps.invertEndian(value);
+		//FIXME number format exception "C9C5E1DC"
 		return Integer.valueOf(ByteOps.bytesToHex(bigEndianValue), 16);
 	}
 
@@ -188,6 +189,34 @@ public class CommonStructures {
 		ByteOps.appendBytes(CommonStructures.networkShort(port), outBytes, tsOffset + 8 + 16);
 
 		return outBytes;
+	}
+	
+	public static Contact extractNoTSNetAddress(byte[] data){
+		byte[] fullIPBytes = ByteOps.subArray(data, 16, 8);
+		byte[] portBytes = ByteOps.subArray(data, 2, 8 + 16);
+
+		int port = Integer.parseInt(ByteOps.bytesToHex(portBytes), 16);
+		InetAddress ip = null;
+
+		byte[] ipPremableSection = ByteOps.subArray(fullIPBytes, 12, 0);
+		if (ByteOps.memComp(ipPremableSection, CommonStructures.ipv4Preamble)) {
+			try {
+				ip = InetAddress.getByAddress(ByteOps.subArray(fullIPBytes, 4, 12));
+			} catch (UnknownHostException e) {
+				System.err.println("Invalid IPv4 address presented: "
+						+ ByteOps.bytesToHex(ByteOps.subArray(fullIPBytes, 4, 12)));
+				return null;
+			}
+		} else {
+			try {
+				ip = InetAddress.getByAddress(fullIPBytes);
+			} catch (UnknownHostException e) {
+				System.err.println("Invalid IPv6 address presented: " + ByteOps.bytesToHex(fullIPBytes));
+				return null;
+			}
+		}
+		
+		return new Contact(ip, port, 0, false);
 	}
 
 	public static Contact extractNetAddress(byte[] data) {
