@@ -29,6 +29,12 @@ public class IncomingParser implements Runnable {
 					this.parent.recievedVerAck();
 				} else if (cmdStr.equals(Constants.ADDR_CMD)) {
 					this.parent.recievedAddr(incMessage.getPayload());
+				} else if (cmdStr.equals(Constants.PING_CMD)) {
+					
+				} else if (cmdStr.equals(Constants.PONG_CMD)) {
+
+				} else if (cmdStr.equals(Constants.REJECT_CMD)) {
+
 				} else {
 					/*
 					 * We don't implement all commands as this is not a full
@@ -41,5 +47,4 @@ public class IncomingParser implements Runnable {
 			this.parent.shutdownNode(NodeErrorCode.INCOMING_FAIL);
 		}
 	}
-
 }

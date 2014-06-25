@@ -20,8 +20,12 @@ public class Constants {
 	public static final String VERACK_CMD = "verack";
 	public static final String GETADDR_CMD = "getaddr";
 	public static final String ADDR_CMD = "addr";
+	public static final String PING_CMD = "ping";
+	public static final String PONG_CMD = "pong";
+	public static final String REJECT_CMD = "reject";
 
 	public static final String HARVEST_LOG = "experiment.harvestlog";
+	public static final String PASSIVE_MON_LOG = "passiveMonitor.passiveclient";
 	
 	public static final String LOG_DIR = "logs/";
 
