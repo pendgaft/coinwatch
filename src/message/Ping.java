@@ -1,5 +1,6 @@
 package message;
 
+import util.ByteOps;
 import net.Constants;
 
 public class Ping extends CommonMessage {
@@ -16,6 +17,10 @@ public class Ping extends CommonMessage {
 		byte[] nonce = new byte[8];
 		Constants.NON_SEC_RNG.nextBytes(nonce);
 		this.setPayload(this.nonce);
+	}
+	
+	public String getNonceStr(){
+		return ByteOps.bytesToHex(this.nonce);
 	}
 
 	public Pong buildPong() {

@@ -1,5 +1,6 @@
 package message;
 
+import util.ByteOps;
 import net.Constants;
 
 public class Pong extends CommonMessage {
@@ -9,7 +10,10 @@ public class Pong extends CommonMessage {
 	public Pong(byte[] data) {
 		super(Constants.PONG_CMD);
 		this.nonce = data;
-		this.setPayload(nonce);
+	}
+	
+	public String getNonceStr(){
+		return ByteOps.bytesToHex(this.nonce);
 	}
 
 }

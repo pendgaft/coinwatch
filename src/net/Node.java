@@ -4,6 +4,7 @@ import java.net.*;
 import java.io.*;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.locks.ReentrantLock;
 
 import message.*;
 import data.Contact;
@@ -15,8 +16,9 @@ public class Node {
 	private Contact parent;
 
 	private int connectionState;
+	private String pongNonce;
 	private NodeErrorCode currentErrorNo;
-	
+
 	private Socket nodeSocket;
 	private InputStream iStream;
 	private OutputStream oStream;
@@ -26,9 +28,8 @@ public class Node {
 	private HashSet<Contact> learnedContacts;
 
 	private Semaphore transactionFlag;
-	
-	
-	public enum NodeErrorCode{
+
+	public enum NodeErrorCode {
 		CONN_TIMEOUT, HANDSHAKE_TIMEOUT, NONE, MISC_IO, OTHERSIDE_CLOSE, INCOMING_FAIL
 	}
 
@@ -36,8 +37,9 @@ public class Node {
 		this.parent = parentContact;
 
 		this.connectionState = 0;
+		this.pongNonce = null;
 		this.currentErrorNo = NodeErrorCode.NONE;
-		
+
 		this.nodeSocket = null;
 		this.iStream = null;
 		this.oStream = null;
@@ -54,7 +56,7 @@ public class Node {
 
 		this.connectionState = 0;
 		this.currentErrorNo = NodeErrorCode.NONE;
-		
+
 		this.nodeSocket = incSocket;
 		this.iStream = this.nodeSocket.getInputStream();
 		this.oStream = this.nodeSocket.getOutputStream();
@@ -73,8 +75,8 @@ public class Node {
 	public boolean thinksConnected() {
 		return this.connectionState == 15;
 	}
-	
-	public NodeErrorCode getErronNo(){
+
+	public NodeErrorCode getErronNo() {
 		return this.currentErrorNo;
 	}
 
@@ -154,6 +156,34 @@ public class Node {
 		return this.thinksConnected();
 	}
 
+	public boolean testConnectionLiveness() {
+		Ping outPing = new Ping();
+		String nonceToSee = outPing.getNonceStr();
+
+		this.pongNonce = null;
+		try {
+			this.oStream.write(outPing.getBytes());
+			this.oStream.flush();
+		} catch (IOException e) {
+			this.currentErrorNo = NodeErrorCode.MISC_IO;
+			return false;
+		}
+
+		try {
+			Thread.sleep(Constants.TRANSACTION_TIMEOUT);
+		} catch (InterruptedException e) {
+			/*
+			 * Deal w/ silently, not a big deal honestly
+			 */
+		}
+
+		if (this.pongNonce != null) {
+			return this.pongNonce.equals(nonceToSee);
+		} else {
+			return false;
+		}
+	}
+
 	public void recievedVersion(Version incVerMsg) {
 
 		this.connectionState += 4;
@@ -184,12 +214,29 @@ public class Node {
 		}
 	}
 
+	public void recievedPing(byte[] pingPayload) {
+		Ping incPing = new Ping(pingPayload);
+		Pong response = incPing.buildPong();
+
+		try {
+			this.oStream.write(response.getBytes());
+			this.oStream.flush();
+		} catch (IOException e) {
+			this.currentErrorNo = NodeErrorCode.MISC_IO;
+		}
+	}
+
+	public void recievedPong(byte[] pongPayload) {
+		Pong incPong = new Pong(pongPayload);
+		this.pongNonce = incPong.getNonceStr();
+	}
+
 	// XXX is there an issue with multiple places calling this at the same time?
 	public void shutdownNode(NodeErrorCode errno) {
-		if(errno != null){
+		if (errno != null) {
 			this.currentErrorNo = errno;
 		}
-		
+
 		this.connectionState = 0;
 		try {
 			this.nodeSocket.close();

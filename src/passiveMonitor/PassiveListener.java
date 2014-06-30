@@ -81,7 +81,7 @@ public class PassiveListener implements Runnable {
 		 */
 		newlyDeadNodes.clear();
 		for (Node tNode : this.bootStrapNode) {
-			if (!tNode.thinksConnected()) {
+			if (!tNode.testConnectionLiveness()) {
 				newlyDeadNodes.add(tNode);
 			}
 		}
