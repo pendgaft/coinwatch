@@ -14,8 +14,8 @@ public class Ping extends CommonMessage {
 
 	public Ping() {
 		super(Constants.PING_CMD);
-		byte[] nonce = new byte[8];
-		Constants.NON_SEC_RNG.nextBytes(nonce);
+		this.nonce = new byte[8];
+		Constants.NON_SEC_RNG.nextBytes(this.nonce);
 		this.setPayload(this.nonce);
 	}
 	
