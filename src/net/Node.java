@@ -75,10 +75,10 @@ public class Node {
 	public boolean thinksConnected() {
 		return this.connectionState == 15;
 	}
-	
-	private void updateErrorStatus(NodeErrorCode incError){
-		synchronized(this.currentErrorNo){
-			if(this.currentErrorNo == NodeErrorCode.NONE){
+
+	private void updateErrorStatus(NodeErrorCode incError) {
+		synchronized (this.currentErrorNo) {
+			if (this.currentErrorNo == NodeErrorCode.NONE) {
 				this.currentErrorNo = incError;
 			}
 		}
@@ -165,10 +165,10 @@ public class Node {
 	}
 
 	public boolean testConnectionLiveness() {
-		if(!this.thinksConnected()){
+		if (!this.thinksConnected()) {
 			return false;
 		}
-		
+
 		Ping outPing = new Ping();
 		String nonceToSee = outPing.getNonceStr();
 
@@ -192,7 +192,7 @@ public class Node {
 
 		if (this.pongNonce != null) {
 			boolean result = this.pongNonce.equals(nonceToSee);
-			if(!result){
+			if (!result) {
 				this.updateErrorStatus(NodeErrorCode.BAD_PING_REPLY);
 			}
 			return result;
@@ -318,4 +318,28 @@ public class Node {
 			return 0;
 		}
 	}
+
+	public static String getErrorNoMessage(NodeErrorCode errorValue) {
+		switch (errorValue) {
+		case CONN_TIMEOUT:
+			return "Connection Timeout";
+		case HANDSHAKE_TIMEOUT:
+			return "Handshake Timeout";
+		case NONE:
+			return "None";
+		case MISC_IO:
+			return "Misc I/O Error";
+		case OTHERSIDE_CLOSE:
+			return "Otherside Close";
+		case INCOMING_FAIL:
+			return "Incoming I/O Error";
+		case REJECT:
+			return "Reject Message Recieved";
+		case BAD_PING_REPLY:
+			return "Bad Ping Reply";
+		default:
+			return "Unknown";
+		}
+	}
+
 }

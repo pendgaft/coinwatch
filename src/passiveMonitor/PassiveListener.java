@@ -3,6 +3,8 @@ package passiveMonitor;
 import java.util.*;
 import java.io.*;
 
+import logging.LogHelper;
+
 import data.Contact;
 import experiment.ConnectionExperiment;
 import net.*;
@@ -82,11 +84,11 @@ public class PassiveListener implements Runnable {
 		 */
 		newlyDeadNodes.clear();
 		for (Node tNode : this.bootStrapNode) {
-			if(!tNode.thinksConnected()){
+			if (!tNode.thinksConnected()) {
 				newlyDeadNodes.add(tNode);
 				continue;
 			}
-			
+
 			if (!tNode.testConnectionLiveness()) {
 				newlyDeadNodes.add(tNode);
 			}
@@ -110,26 +112,27 @@ public class PassiveListener implements Runnable {
 			e.printStackTrace();
 		}
 	}
-	
-	private void failureReasonReport(){
-		int rejectCount = 0;
-		int badPingPong = 0;
-		
-		for(Node tNode: this.historicalNodes){
-			if(tNode.getErronNo() == NodeErrorCode.REJECT){
-				rejectCount++;
+
+	private void failureReasonReport() {
+		HashMap<String, Double> errorValues = new HashMap<String, Double>();
+
+		for (Node tNode : this.historicalNodes) {
+			String errString = Node.getErrorNoMessage(tNode.getErronNo());
+			if (!errorValues.containsKey(errString)) {
+				errorValues.put(errString, 0.0);
 			}
-			if(tNode.getErronNo() == NodeErrorCode.BAD_PING_REPLY){
-				badPingPong++;
-			}
+			errorValues.put(errString, errorValues.get(errString) + 1.0);
 		}
 		
-		System.out.println("Reject count: " + rejectCount);
-		System.out.println("Bad ping/pong: " + badPingPong);
+		List<String> orderList = LogHelper.buildDecendingList(errorValues);
+		System.out.println("Error summary");
+		for(String tError: orderList){
+			System.out.println(tError + " " + errorValues.get(tError));
+		}
 	}
-	
-	public static void main(String args[]) throws IOException{
-	    Constants.initConstants();
+
+	public static void main(String args[]) throws IOException {
+		Constants.initConstants();
 		Set<Contact> dnsNodes = ConnectionExperiment.dnsBootStrap();
 		System.out.println("starting with " + dnsNodes.size());
 		PassiveListener self = new PassiveListener(dnsNodes);
