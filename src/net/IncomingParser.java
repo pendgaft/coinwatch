@@ -34,7 +34,7 @@ public class IncomingParser implements Runnable {
 				} else if (cmdStr.equals(Constants.PONG_CMD)) {
 					this.parent.recievedPong(incMessage.getPayload());
 				} else if (cmdStr.equals(Constants.REJECT_CMD)) {
-
+					this.parent.shutdownNode(NodeErrorCode.REJECT);
 				} else {
 					/*
 					 * We don't implement all commands as this is not a full

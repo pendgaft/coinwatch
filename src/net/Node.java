@@ -30,7 +30,7 @@ public class Node {
 	private Semaphore transactionFlag;
 
 	public enum NodeErrorCode {
-		CONN_TIMEOUT, HANDSHAKE_TIMEOUT, NONE, MISC_IO, OTHERSIDE_CLOSE, INCOMING_FAIL
+		CONN_TIMEOUT, HANDSHAKE_TIMEOUT, NONE, MISC_IO, OTHERSIDE_CLOSE, INCOMING_FAIL, REJECT
 	}
 
 	public Node(Contact parentContact) {
