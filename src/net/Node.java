@@ -169,8 +169,9 @@ public class Node {
 			return false;
 		}
 
+		this.transactionFlag.drainPermits();
 		try {
-			Thread.sleep(Constants.TRANSACTION_TIMEOUT);
+			this.transactionFlag.tryAcquire(Constants.TRANSACTION_TIMEOUT, Constants.TRANSACTION_TIMEOUT_UNIT);
 		} catch (InterruptedException e) {
 			/*
 			 * Deal w/ silently, not a big deal honestly
@@ -229,6 +230,7 @@ public class Node {
 	public void recievedPong(byte[] pongPayload) {
 		Pong incPong = new Pong(pongPayload);
 		this.pongNonce = incPong.getNonceStr();
+		this.transactionFlag.release();
 	}
 
 	// XXX is there an issue with multiple places calling this at the same time?
