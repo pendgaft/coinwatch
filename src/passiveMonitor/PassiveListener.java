@@ -19,11 +19,12 @@ public class PassiveListener implements Runnable {
 
 	public PassiveListener(Set<Contact> bootStrapNodes) throws IOException {
 		this.bootStrapNode = new HashSet<Node>();
-
 		this.connectedNodes = new HashSet<Node>();
 		this.historicalNodes = new HashSet<Node>();
 		this.failedConnectionCounter = 0;
 		this.listener = new ConnectionListener(this);
+
+		this.addNewBootstrapNodes(bootStrapNodes);
 
 		// TODO set this up so we can exit more cleanly
 		Thread listenerThread = new Thread(this.listener);
@@ -103,7 +104,9 @@ public class PassiveListener implements Runnable {
 	}
 	
 	public static void main(String args[]) throws IOException{
+	    Constants.initConstants();
 		Set<Contact> dnsNodes = ConnectionExperiment.dnsBootStrap();
+		System.out.println("starting with " + dnsNodes.size());
 		PassiveListener self = new PassiveListener(dnsNodes);
 		Thread selfThread = new Thread(self);
 		selfThread.setDaemon(false);
