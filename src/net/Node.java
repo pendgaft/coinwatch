@@ -30,7 +30,7 @@ public class Node {
 	private Semaphore transactionFlag;
 
 	public enum NodeErrorCode {
-		CONN_TIMEOUT, HANDSHAKE_TIMEOUT, NONE, MISC_IO, OTHERSIDE_CLOSE, INCOMING_FAIL, REJECT
+		CONN_TIMEOUT, HANDSHAKE_TIMEOUT, NONE, MISC_IO, OTHERSIDE_CLOSE, INCOMING_FAIL, REJECT, BAD_PING_REPLY
 	}
 
 	public Node(Contact parentContact) {
@@ -75,6 +75,14 @@ public class Node {
 	public boolean thinksConnected() {
 		return this.connectionState == 15;
 	}
+	
+	private void updateErrorStatus(NodeErrorCode incError){
+		synchronized(this.currentErrorNo){
+			if(this.currentErrorNo == NodeErrorCode.NONE){
+				this.currentErrorNo = incError;
+			}
+		}
+	}
 
 	public NodeErrorCode getErronNo() {
 		return this.currentErrorNo;
@@ -98,10 +106,10 @@ public class Node {
 				this.iStream = this.nodeSocket.getInputStream();
 				this.oStream = this.nodeSocket.getOutputStream();
 			} catch (SocketTimeoutException e) {
-				this.currentErrorNo = NodeErrorCode.CONN_TIMEOUT;
+				this.updateErrorStatus(NodeErrorCode.CONN_TIMEOUT);
 				return false;
 			} catch (IOException e) {
-				this.currentErrorNo = NodeErrorCode.MISC_IO;
+				this.updateErrorStatus(NodeErrorCode.MISC_IO);
 				return false;
 			}
 		}
@@ -132,7 +140,7 @@ public class Node {
 			} catch (IOException e2) {
 				// Can be caught silently, we're already dying
 			}
-			this.currentErrorNo = NodeErrorCode.MISC_IO;
+			this.updateErrorStatus(NodeErrorCode.MISC_IO);
 			return false;
 		}
 		this.connectionState += 1;
@@ -145,7 +153,7 @@ public class Node {
 			} catch (IOException e2) {
 				// Can be caught silently, we're already dying
 			}
-			this.currentErrorNo = NodeErrorCode.HANDSHAKE_TIMEOUT;
+			this.updateErrorStatus(NodeErrorCode.HANDSHAKE_TIMEOUT);
 			return false;
 		}
 
@@ -157,6 +165,10 @@ public class Node {
 	}
 
 	public boolean testConnectionLiveness() {
+		if(!this.thinksConnected()){
+			return false;
+		}
+		
 		Ping outPing = new Ping();
 		String nonceToSee = outPing.getNonceStr();
 
@@ -165,7 +177,7 @@ public class Node {
 			this.oStream.write(outPing.getBytes());
 			this.oStream.flush();
 		} catch (IOException e) {
-			this.currentErrorNo = NodeErrorCode.MISC_IO;
+			this.updateErrorStatus(NodeErrorCode.MISC_IO);
 			return false;
 		}
 
@@ -179,7 +191,11 @@ public class Node {
 		}
 
 		if (this.pongNonce != null) {
-			return this.pongNonce.equals(nonceToSee);
+			boolean result = this.pongNonce.equals(nonceToSee);
+			if(!result){
+				this.updateErrorStatus(NodeErrorCode.BAD_PING_REPLY);
+			}
+			return result;
 		} else {
 			return false;
 		}
@@ -236,7 +252,7 @@ public class Node {
 	// XXX is there an issue with multiple places calling this at the same time?
 	public void shutdownNode(NodeErrorCode errno) {
 		if (errno != null) {
-			this.currentErrorNo = errno;
+			this.updateErrorStatus(errno);
 		}
 
 		this.connectionState = 0;

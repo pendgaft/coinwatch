@@ -6,6 +6,7 @@ import java.io.*;
 import data.Contact;
 import experiment.ConnectionExperiment;
 import net.*;
+import net.Node.NodeErrorCode;
 
 public class PassiveListener implements Runnable {
 
@@ -81,11 +82,17 @@ public class PassiveListener implements Runnable {
 		 */
 		newlyDeadNodes.clear();
 		for (Node tNode : this.bootStrapNode) {
+			if(!tNode.thinksConnected()){
+				newlyDeadNodes.add(tNode);
+				continue;
+			}
+			
 			if (!tNode.testConnectionLiveness()) {
 				newlyDeadNodes.add(tNode);
 			}
 		}
 		this.bootStrapNode.removeAll(newlyDeadNodes);
+		this.historicalNodes.addAll(newlyDeadNodes);
 
 	}
 
@@ -93,14 +100,32 @@ public class PassiveListener implements Runnable {
 		try {
 			while (true) {
 				this.testNodeStatus();
-				System.out.println("Introduced ourself to: " + this.bootStrapNode.size());
-				System.out.println("Connected nodes: " + this.connectedNodes.size());
+				System.out.println("Outgoing connections: " + this.bootStrapNode.size());
+				System.out.println("Incoming connections: " + this.connectedNodes.size());
 				System.out.println("Failed connection attempts: " + this.failedConnectionCounter);
+				this.failureReasonReport();
 				Thread.sleep(PassiveListener.REPORT_INTERVAL);
 			}
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
+	}
+	
+	private void failureReasonReport(){
+		int rejectCount = 0;
+		int badPingPong = 0;
+		
+		for(Node tNode: this.historicalNodes){
+			if(tNode.getErronNo() == NodeErrorCode.REJECT){
+				rejectCount++;
+			}
+			if(tNode.getErronNo() == NodeErrorCode.BAD_PING_REPLY){
+				badPingPong++;
+			}
+		}
+		
+		System.out.println("Reject count: " + rejectCount);
+		System.out.println("Bad ping/pong: " + badPingPong);
 	}
 	
 	public static void main(String args[]) throws IOException{
