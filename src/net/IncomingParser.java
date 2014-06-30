@@ -30,9 +30,9 @@ public class IncomingParser implements Runnable {
 				} else if (cmdStr.equals(Constants.ADDR_CMD)) {
 					this.parent.recievedAddr(incMessage.getPayload());
 				} else if (cmdStr.equals(Constants.PING_CMD)) {
-					
+					this.parent.recievedPing(incMessage.getPayload());
 				} else if (cmdStr.equals(Constants.PONG_CMD)) {
-
+					this.parent.recievedPong(incMessage.getPayload());
 				} else if (cmdStr.equals(Constants.REJECT_CMD)) {
 
 				} else {
