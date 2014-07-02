@@ -5,9 +5,10 @@ import experiment.ExperimentContainer;
 
 public class ConnectorThread implements Runnable {
 
-	private ExperimentContainer parent;
+	//FIXME should prob not reach directly into the guts of another data structure..
+	private ExperimentContainer<Node, Node> parent;
 
-	public ConnectorThread(ExperimentContainer myParent) {
+	public ConnectorThread(ExperimentContainer<Node, Node> myParent) {
 		this.parent = myParent;
 	}
 

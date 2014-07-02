@@ -9,12 +9,14 @@ import data.Contact;
 import experiment.ExperimentContainer;
 import experiment.HarvestExperiment;
 
+
 public class HarvestThread implements Runnable {
 
-	private ExperimentContainer parent;
+	//FIXME should prob not reach directly into the guts of another data structure..
+	private ExperimentContainer<Node, Node> parent;
 	private Logger expLog;
 
-	public HarvestThread(ExperimentContainer holdingContainer) {
+	public HarvestThread(ExperimentContainer<Node, Node> holdingContainer) {
 		this.parent = holdingContainer;
 		this.expLog = Logger.getLogger(Constants.HARVEST_LOG);
 	}
