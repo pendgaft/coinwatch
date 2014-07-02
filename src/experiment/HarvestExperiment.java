@@ -5,7 +5,6 @@ import java.util.*;
 import java.io.*;
 import java.util.logging.*;
 
-import zmap.ZmapSelf;
 import zmap.ZmapSupplicant;
 
 import logging.LogHelper;
@@ -20,7 +19,7 @@ public class HarvestExperiment {
 
 	private Set<Node> nodesToTest;
 	private Set<Contact> harvestedContacts;
-	private ExperimentContainer holdingContainer;
+	private ExperimentContainer<Node, Node> holdingContainer;
 	private Logger expLogger;
 
 	private static final int THREAD_COUNT = 60;
@@ -67,7 +66,7 @@ public class HarvestExperiment {
 		/*
 		 * Build experiment container and threads, start them up
 		 */
-		this.holdingContainer = new ExperimentContainer();
+		this.holdingContainer = new ExperimentContainer<Node, Node>();
 		for (int counter = 0; counter < HarvestExperiment.THREAD_COUNT; counter++) {
 			Thread tThread = new Thread(new HarvestThread(this.holdingContainer));
 			tThread.setDaemon(true);

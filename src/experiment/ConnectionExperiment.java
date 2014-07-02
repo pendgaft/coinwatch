@@ -22,7 +22,7 @@ public class ConnectionExperiment {
 	private Set<Contact> nodesToTest;
 	private Set<Node> successfulNodes;
 	private Logger expLogger;
-	private ExperimentContainer workHolder;
+	private ExperimentContainer<Node, Node> workHolder;
 
 	public ConnectionExperiment(boolean generateOwnLogger) {
 		Constants.initConstants();
@@ -38,7 +38,7 @@ public class ConnectionExperiment {
 		/*
 		 * Build container and worker threads, start those threads
 		 */
-		this.workHolder = new ExperimentContainer();
+		this.workHolder = new ExperimentContainer<Node, Node>();
 		for (int counter = 0; counter < THREAD_COUNT; counter++) {
 			Thread tThread = new Thread(new ConnectorThread(this.workHolder));
 			tThread.setDaemon(true);
