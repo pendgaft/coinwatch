@@ -19,6 +19,13 @@ public class Contact implements Serializable{
 		this.lastSeenDirect = direct;
 	}
 	
+	public Contact(InetAddress ip, int port){
+		this.myIp = ip;
+		this.myPort = port;
+		this.myTimeStamp = 0;
+		this.lastSeenDirect = false;
+	}
+	
 	public Node getNodeForContact(){
 		return new Node(this);
 	}
