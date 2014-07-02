@@ -17,6 +17,8 @@ public class PassiveListener implements Runnable {
 	private Set<Node> historicalNodes;
 	private int failedConnectionCounter;
 
+	private NodeTester pingTestMaster;
+
 	private static final int REPORT_INTERVAL = 5000;
 
 	public PassiveListener(Set<Contact> bootStrapNodes) throws IOException {
@@ -26,12 +28,14 @@ public class PassiveListener implements Runnable {
 		this.failedConnectionCounter = 0;
 		this.listener = new ConnectionListener(this);
 
-		//this.addNewBootstrapNodes(bootStrapNodes);
+		// this.addNewBootstrapNodes(bootStrapNodes);
 
 		// TODO set this up so we can exit more cleanly
 		Thread listenerThread = new Thread(this.listener);
 		listenerThread.setDaemon(true);
 		listenerThread.start();
+
+		this.pingTestMaster = new NodeTester();
 	}
 
 	public void addNewBootstrapNodes(Set<Contact> bootStrapNodes) {
@@ -68,12 +72,7 @@ public class PassiveListener implements Runnable {
 		 * Clear out any dead nodes that called us and then hung up
 		 */
 		synchronized (this.connectedNodes) {
-			for (Node tNode : this.connectedNodes) {
-				if (!tNode.thinksConnected()) {
-					newlyDeadNodes.add(tNode);
-				}
-			}
-
+			newlyDeadNodes = this.pingTestMaster.runNodeTest(this.connectedNodes);
 			this.connectedNodes.removeAll(newlyDeadNodes);
 			this.historicalNodes.addAll(newlyDeadNodes);
 		}
@@ -82,16 +81,7 @@ public class PassiveListener implements Runnable {
 		 * Clear out nodes we've introduced ourself to
 		 */
 		newlyDeadNodes.clear();
-		for (Node tNode : this.bootStrapNode) {
-			if (!tNode.thinksConnected()) {
-				newlyDeadNodes.add(tNode);
-				continue;
-			}
-
-			if (!tNode.testConnectionLiveness()) {
-				newlyDeadNodes.add(tNode);
-			}
-		}
+		newlyDeadNodes = this.pingTestMaster.runNodeTest(this.bootStrapNode);
 		this.bootStrapNode.removeAll(newlyDeadNodes);
 		this.historicalNodes.addAll(newlyDeadNodes);
 
@@ -122,10 +112,10 @@ public class PassiveListener implements Runnable {
 			}
 			errorValues.put(errString, errorValues.get(errString) + 1.0);
 		}
-		
+
 		List<String> orderList = LogHelper.buildDecendingList(errorValues);
 		System.out.println("Error summary");
-		for(String tError: orderList){
+		for (String tError : orderList) {
 			System.out.println(tError + " " + errorValues.get(tError));
 		}
 	}
