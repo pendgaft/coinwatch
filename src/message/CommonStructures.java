@@ -3,6 +3,8 @@ package message;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 
+import net.Constants;
+
 import data.Contact;
 
 import util.ByteOps;
@@ -22,8 +24,12 @@ public class CommonStructures {
 		return ByteOps.hexStringToByteArray(hexStr);
 	}
 
-	public static byte[] fixedSmallEndianInt(int value) {
-		String hexStr = Integer.toHexString(value);
+	public static byte[] fixedSmallEndianInt(long value) {
+		if (value > Constants.MAX_UNSIGNED_INT) {
+			throw new RuntimeException("Unsigned int too large: " + value);
+		}
+
+		String hexStr = Long.toHexString(value);
 		while (hexStr.length() < 8) {
 			hexStr = "0" + hexStr;
 		}
@@ -31,10 +37,13 @@ public class CommonStructures {
 		return ByteOps.invertEndian(bigEndianValue);
 	}
 
-	public static int extractSmallEndianInt(byte[] value) {
+	public static long extractSmallEndianInt(byte[] value) {
 		byte[] bigEndianValue = ByteOps.invertEndian(value);
-		//FIXME number format exception "C9C5E1DC"
-		return Integer.valueOf(ByteOps.bytesToHex(bigEndianValue), 16);
+		long extractedValue =  Long.valueOf(ByteOps.bytesToHex(bigEndianValue), 16);
+		if(extractedValue > Constants.MAX_UNSIGNED_INT){
+			throw new RuntimeException("Unsigned int too large: " + extractedValue);
+		}
+		return extractedValue;
 	}
 
 	public static byte[] fixedSmallEndianLong(long value) {
@@ -190,8 +199,8 @@ public class CommonStructures {
 
 		return outBytes;
 	}
-	
-	public static Contact extractNoTSNetAddress(byte[] data){
+
+	public static Contact extractNoTSNetAddress(byte[] data) {
 		byte[] fullIPBytes = ByteOps.subArray(data, 16, 8);
 		byte[] portBytes = ByteOps.subArray(data, 2, 8 + 16);
 
@@ -215,7 +224,7 @@ public class CommonStructures {
 				return null;
 			}
 		}
-		
+
 		return new Contact(ip, port, 0, false);
 	}
 
@@ -245,7 +254,7 @@ public class CommonStructures {
 				return null;
 			}
 		}
-		
+
 		return new Contact(ip, port, ts, false);
 	}
 

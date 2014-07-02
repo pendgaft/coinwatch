@@ -29,6 +29,7 @@ public class Constants {
 	
 	public static final String LOG_DIR = "logs/";
 
+	public static final long MAX_UNSIGNED_INT = (long)(Math.pow(2, 32) - 1);
 	public static InetAddress SrcIP = null;
 	public static Random NON_SEC_RNG = new Random();
 

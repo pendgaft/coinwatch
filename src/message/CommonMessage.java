@@ -30,7 +30,8 @@ public class CommonMessage {
 		
 		this.command = new String(ByteOps.subArray(header, 12, 4));
 		this.command = this.command.trim().toLowerCase();
-		int payloadSize = CommonStructures.extractSmallEndianInt(ByteOps.subArray(header, 4, 4 + 12));
+		//XXX can the payload size ever be larger than 2^31-1?
+		int payloadSize = (int)CommonStructures.extractSmallEndianInt(ByteOps.subArray(header, 4, 4 + 12));
 		
 		this.payload = new byte[payloadSize];
 		offset = 0;

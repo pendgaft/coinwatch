@@ -8,9 +8,9 @@ import data.Contact;
 
 public class Version extends CommonMessage {
 
-	private int versionNumber;
+	private long versionNumber;
 	private String userAgent;
-	private int lastBlockNumber;
+	private long lastBlockNumber;
 	private Contact srcContact;
 
 	public static final int DEFAULT_VERSION_NUMBER = 70002;
@@ -84,11 +84,11 @@ public class Version extends CommonMessage {
 		return this.srcContact;
 	}
 	
-	public int getVersion(){
+	public long getVersion(){
 		return this.versionNumber;
 	}
 	
-	public int getLastBlockSeen(){
+	public long getLastBlockSeen(){
 		return this.lastBlockNumber;
 	}
 	

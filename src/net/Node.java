@@ -114,6 +114,13 @@ public class Node {
 			}
 		}
 
+		// FIXME this needs to be actually populated, with data from the version
+		// message
+		if (this.parent == null) {
+			//FIXME dirty hack for now, assumes default port (might not be true)
+			this.parent = new Contact(this.nodeSocket.getInetAddress(), Constants.DEFAULT_PORT);
+		}
+
 		/*
 		 * Start up a listener
 		 */
@@ -155,10 +162,6 @@ public class Node {
 			}
 			this.updateErrorStatus(NodeErrorCode.HANDSHAKE_TIMEOUT);
 			return false;
-		}
-
-		if (this.parent == null) {
-			// TODO populate based on the version packet
 		}
 
 		return this.thinksConnected();
@@ -311,7 +314,7 @@ public class Node {
 		}
 	}
 
-	public int getLastBlockSeen() {
+	public long getLastBlockSeen() {
 		if (this.remoteVersionMessage != null) {
 			return this.remoteVersionMessage.getLastBlockSeen();
 		} else {

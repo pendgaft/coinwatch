@@ -195,7 +195,7 @@ public class ConnectionExperiment {
 		test.run();
 
 		Set<Node> reachableNodes = test.getReachableNodes();
-		int headOfBlockChain = 0;
+		long headOfBlockChain = 0;
 		int reportingThisBlock = 0;
 		HashMap<String, Integer> uaCounts = new HashMap<String, Integer>();
 		for (Node tNode : reachableNodes) {
