@@ -18,7 +18,7 @@ public class PassiveListener implements Runnable {
 	private Set<Node> historicalNodes;
 	private int failedConnectionCounter;
 
-	private static final int REPORT_INTERVAL = 60000;
+	private static final int REPORT_INTERVAL = 5000;
 
 	public PassiveListener(Set<Contact> bootStrapNodes) throws IOException {
 		this.bootStrapNode = new HashSet<Node>();
@@ -27,7 +27,7 @@ public class PassiveListener implements Runnable {
 		this.failedConnectionCounter = 0;
 		this.listener = new ConnectionListener(this);
 
-		this.addNewBootstrapNodes(bootStrapNodes);
+		//this.addNewBootstrapNodes(bootStrapNodes);
 
 		// TODO set this up so we can exit more cleanly
 		Thread listenerThread = new Thread(this.listener);
