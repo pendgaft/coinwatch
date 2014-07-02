@@ -2,8 +2,6 @@ package net;
 
 import java.io.*;
 
-import net.Node.NodeErrorCode;
-
 import message.Version;
 import message.CommonMessage;
 
@@ -34,7 +32,7 @@ public class IncomingParser implements Runnable {
 				} else if (cmdStr.equals(Constants.PONG_CMD)) {
 					this.parent.recievedPong(incMessage.getPayload());
 				} else if (cmdStr.equals(Constants.REJECT_CMD)) {
-					this.parent.shutdownNode(NodeErrorCode.REJECT);
+					this.parent.shutdownNode("Recieved REJECT message");
 				} else {
 					/*
 					 * We don't implement all commands as this is not a full
@@ -44,7 +42,7 @@ public class IncomingParser implements Runnable {
 				}
 			}
 		} catch (IOException e) {
-			this.parent.shutdownNode(NodeErrorCode.INCOMING_FAIL);
+			this.parent.shutdownNode("I/O exception reading incoming data");
 		}
 	}
 }

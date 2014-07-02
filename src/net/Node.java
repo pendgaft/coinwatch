@@ -4,7 +4,6 @@ import java.net.*;
 import java.io.*;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.concurrent.locks.ReentrantLock;
 
 import message.*;
 import data.Contact;
@@ -17,7 +16,7 @@ public class Node {
 
 	private int connectionState;
 	private String pongNonce;
-	private NodeErrorCode currentErrorNo;
+	private String currentErrorMsg;
 
 	private Socket nodeSocket;
 	private InputStream iStream;
@@ -29,16 +28,12 @@ public class Node {
 
 	private Semaphore transactionFlag;
 
-	public enum NodeErrorCode {
-		CONN_TIMEOUT, HANDSHAKE_TIMEOUT, NONE, MISC_IO, OTHERSIDE_CLOSE, INCOMING_FAIL, REJECT, BAD_PING_REPLY
-	}
-
 	public Node(Contact parentContact) {
 		this.parent = parentContact;
 
 		this.connectionState = 0;
 		this.pongNonce = null;
-		this.currentErrorNo = NodeErrorCode.NONE;
+		this.currentErrorMsg = null;
 
 		this.nodeSocket = null;
 		this.iStream = null;
@@ -55,7 +50,7 @@ public class Node {
 		this.parent = null;
 
 		this.connectionState = 0;
-		this.currentErrorNo = NodeErrorCode.NONE;
+		this.currentErrorMsg = null;
 
 		this.nodeSocket = incSocket;
 		this.iStream = this.nodeSocket.getInputStream();
@@ -76,16 +71,25 @@ public class Node {
 		return this.connectionState == 15;
 	}
 
-	private void updateErrorStatus(NodeErrorCode incError) {
-		synchronized (this.currentErrorNo) {
-			if (this.currentErrorNo == NodeErrorCode.NONE) {
-				this.currentErrorNo = incError;
+	private void updateErrorStatus(String incError) {
+		synchronized (this.currentErrorMsg) {
+			if (this.currentErrorMsg == null) {
+				this.currentErrorMsg = incError;
 			}
 		}
 	}
 
-	public NodeErrorCode getErronNo() {
-		return this.currentErrorNo;
+	public String getErrorMsg(boolean clear) {
+		String errFetch = null;
+
+		synchronized (this.currentErrorMsg) {
+			errFetch = this.currentErrorMsg;
+			if (clear) {
+				this.currentErrorMsg = null;
+			}
+		}
+
+		return errFetch;
 	}
 
 	public boolean connect() {
@@ -106,10 +110,10 @@ public class Node {
 				this.iStream = this.nodeSocket.getInputStream();
 				this.oStream = this.nodeSocket.getOutputStream();
 			} catch (SocketTimeoutException e) {
-				this.updateErrorStatus(NodeErrorCode.CONN_TIMEOUT);
+				this.updateErrorStatus("Socket timeout");
 				return false;
 			} catch (IOException e) {
-				this.updateErrorStatus(NodeErrorCode.MISC_IO);
+				this.updateErrorStatus("I/O exception binding: " + e.getMessage());
 				return false;
 			}
 		}
@@ -117,7 +121,8 @@ public class Node {
 		// FIXME this needs to be actually populated, with data from the version
 		// message
 		if (this.parent == null) {
-			//FIXME dirty hack for now, assumes default port (might not be true)
+			// FIXME dirty hack for now, assumes default port (might not be
+			// true)
 			this.parent = new Contact(this.nodeSocket.getInetAddress(), Constants.DEFAULT_PORT);
 		}
 
@@ -142,26 +147,38 @@ public class Node {
 			this.oStream.write(versionPacket.getBytes());
 			this.oStream.flush();
 		} catch (IOException e1) {
+			this.updateErrorStatus("I/O exception writing version packet");
 			try {
 				this.nodeSocket.close();
 			} catch (IOException e2) {
 				// Can be caught silently, we're already dying
 			}
-			this.updateErrorStatus(NodeErrorCode.MISC_IO);
 			return false;
 		}
 		this.connectionState += 1;
 
+		boolean waitResult = false;
 		try {
-			this.transactionFlag.tryAcquire(2, Constants.CONNECT_TIMEOUT, Constants.CONNECT_TIMEOUT_UNIT);
+			waitResult = this.transactionFlag.tryAcquire(2, Constants.CONNECT_TIMEOUT, Constants.CONNECT_TIMEOUT_UNIT);
 		} catch (InterruptedException e) {
+			this.updateErrorStatus("Interupted waiting for version handshake.");
 			try {
 				this.nodeSocket.close();
 			} catch (IOException e2) {
 				// Can be caught silently, we're already dying
 			}
-			this.updateErrorStatus(NodeErrorCode.HANDSHAKE_TIMEOUT);
 			return false;
+		}
+		/*
+		 * evaluate if the try acquire succeeded
+		 */
+		if (!waitResult) {
+			this.updateErrorStatus("Timed out waiting for version/verack handshake");
+			try {
+				this.nodeSocket.close();
+			} catch (IOException e2) {
+				// Can be caught silently, we're already dying
+			}
 		}
 
 		return this.thinksConnected();
@@ -180,26 +197,38 @@ public class Node {
 			this.oStream.write(outPing.getBytes());
 			this.oStream.flush();
 		} catch (IOException e) {
-			this.updateErrorStatus(NodeErrorCode.MISC_IO);
+			this.shutdownNode("I/O error writing ping during connection test");
 			return false;
 		}
 
+		/*
+		 * Block on response, we don't actually need to error here, as we'll
+		 * error during the test beneath
+		 */
 		this.transactionFlag.drainPermits();
+		boolean waitSuccess = false;
 		try {
-			this.transactionFlag.tryAcquire(Constants.TRANSACTION_TIMEOUT, Constants.TRANSACTION_TIMEOUT_UNIT);
+			waitSuccess = this.transactionFlag.tryAcquire(Constants.TRANSACTION_TIMEOUT,
+					Constants.TRANSACTION_TIMEOUT_UNIT);
 		} catch (InterruptedException e) {
 			/*
 			 * Deal w/ silently, not a big deal honestly
 			 */
 		}
 
-		if (this.pongNonce != null) {
-			boolean result = this.pongNonce.equals(nonceToSee);
-			if (!result) {
-				this.updateErrorStatus(NodeErrorCode.BAD_PING_REPLY);
+		if (waitSuccess) {
+			if (this.pongNonce != null) {
+				boolean result = this.pongNonce.equals(nonceToSee);
+				if (!result) {
+					this.shutdownNode("bad ping reply");
+				}
+				return result;
+			} else {
+				this.shutdownNode("Ping reply still null (shouldn't get here...).");
+				return false;
 			}
-			return result;
-		} else {
+		}else{
+			this.shutdownNode("Timeout waiting for ping reply");
 			return false;
 		}
 	}
@@ -242,7 +271,7 @@ public class Node {
 			this.oStream.write(response.getBytes());
 			this.oStream.flush();
 		} catch (IOException e) {
-			this.currentErrorNo = NodeErrorCode.MISC_IO;
+			this.shutdownNode("error writing pong");
 		}
 	}
 
@@ -253,10 +282,8 @@ public class Node {
 	}
 
 	// XXX is there an issue with multiple places calling this at the same time?
-	public void shutdownNode(NodeErrorCode errno) {
-		if (errno != null) {
-			this.updateErrorStatus(errno);
-		}
+	public void shutdownNode(String errorMessage) {
+		this.updateErrorStatus(errorMessage);
 
 		this.connectionState = 0;
 		try {
@@ -272,7 +299,7 @@ public class Node {
 		try {
 			this.oStream.write(outMsg.getBytes());
 		} catch (IOException e) {
-			this.shutdownNode(NodeErrorCode.MISC_IO);
+			this.shutdownNode("error wrting get_addr message");
 		}
 
 		try {
@@ -321,28 +348,4 @@ public class Node {
 			return 0;
 		}
 	}
-
-	public static String getErrorNoMessage(NodeErrorCode errorValue) {
-		switch (errorValue) {
-		case CONN_TIMEOUT:
-			return "Connection Timeout";
-		case HANDSHAKE_TIMEOUT:
-			return "Handshake Timeout";
-		case NONE:
-			return "None";
-		case MISC_IO:
-			return "Misc I/O Error";
-		case OTHERSIDE_CLOSE:
-			return "Otherside Close";
-		case INCOMING_FAIL:
-			return "Incoming I/O Error";
-		case REJECT:
-			return "Reject Message Recieved";
-		case BAD_PING_REPLY:
-			return "Bad Ping Reply";
-		default:
-			return "Unknown";
-		}
-	}
-
 }

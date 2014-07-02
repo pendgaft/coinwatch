@@ -10,7 +10,6 @@ import data.Contact;
 import logging.LogHelper;
 import net.Constants;
 import net.Node;
-import net.Node.NodeErrorCode;
 
 import experiment.threading.ConnectorThread;
 
@@ -97,10 +96,7 @@ public class ConnectionExperiment {
 		 */
 		int passed = 0;
 		int failed = 0;
-		int connTO = 0;
-		int handTO = 0;
-		int ioError = 0;
-		int incIOError = 0;
+		HashMap<String, Integer> errorCounts = new HashMap<String, Integer>();
 		for (int counter = 0; counter < ipv4Addresses.size(); counter++) {
 			Node doneNode = this.workHolder.fetchCompleted();
 			if (doneNode.thinksConnected()) {
@@ -108,22 +104,12 @@ public class ConnectionExperiment {
 				this.successfulNodes.add(doneNode);
 			} else {
 				failed++;
-				NodeErrorCode ec = doneNode.getErronNo();
-				switch (ec) {
-				case CONN_TIMEOUT:
-					connTO++;
-					break;
-				case HANDSHAKE_TIMEOUT:
-					handTO++;
-					break;
-				case MISC_IO:
-					ioError++;
-					break;
-				case INCOMING_FAIL:
-					incIOError++;
-				default:
-					break;
+				String ec = doneNode.getErrorMsg(false);
+				
+				if(!errorCounts.containsKey(ec)){
+					errorCounts.put(ec, 0);
 				}
+				errorCounts.put(ec, errorCounts.get(ec) + 1);
 			}
 		}
 		long stop = System.currentTimeMillis();
@@ -135,11 +121,10 @@ public class ConnectionExperiment {
 		this.expLogger.info("IPv4," + ipv4Addresses.size() + "," + this.nodesToTest.size());
 		this.expLogger.info("reachable," + passed + "," + ipv4Addresses.size());
 		this.expLogger.info("failed to conn " + failed);
-		this.expLogger.info("failed via conn timeout " + connTO);
-		this.expLogger.info("failed via handshake timeout " + handTO);
-		this.expLogger.info("failed via other io " + ioError);
-		this.expLogger.info("failed via incoming io " + incIOError);
-
+		for(String tError: errorCounts.keySet()){
+			this.expLogger.info("failure " + errorCounts.get(tError) + " : " + tError);
+		}
+		
 		/*
 		 * Log user agent population
 		 */

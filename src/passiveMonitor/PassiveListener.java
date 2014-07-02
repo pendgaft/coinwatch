@@ -8,7 +8,6 @@ import logging.LogHelper;
 import data.Contact;
 import experiment.ConnectionExperiment;
 import net.*;
-import net.Node.NodeErrorCode;
 
 public class PassiveListener implements Runnable {
 
@@ -117,7 +116,7 @@ public class PassiveListener implements Runnable {
 		HashMap<String, Double> errorValues = new HashMap<String, Double>();
 
 		for (Node tNode : this.historicalNodes) {
-			String errString = Node.getErrorNoMessage(tNode.getErronNo());
+			String errString = tNode.getErrorMsg(false);
 			if (!errorValues.containsKey(errString)) {
 				errorValues.put(errString, 0.0);
 			}
