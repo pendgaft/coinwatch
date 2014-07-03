@@ -30,7 +30,7 @@ public class PassiveListener implements Runnable {
 		this.failedConnectionCounter = 0;
 		this.listener = new ConnectionListener(this);
 
-		// this.addNewBootstrapNodes(bootStrapNodes);
+		this.addNewBootstrapNodes(bootStrapNodes);
 
 		// TODO set this up so we can exit more cleanly
 		Thread listenerThread = new Thread(this.listener);
