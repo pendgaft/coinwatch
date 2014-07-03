@@ -72,7 +72,7 @@ public class Version extends CommonMessage {
 		 * last block received -- nodes don't really seem to care that we claim
 		 * we've never seen a block, we just look like a new client
 		 */
-		ByteOps.appendBytes(CommonStructures.fixedSmallEndianInt(0), payload, 4 + 8 + 8 + 26 + 26 + 8 + 1);
+		ByteOps.appendBytes(CommonStructures.fixedSmallEndianInt(Constants.LAST_BLOCK), payload, 4 + 8 + 8 + 26 + 26 + 8 + 1);
 
 		// relay flag
 		ByteOps.appendBytes(ByteOps.hexStringToByteArray("00"), payload, 4 + 8 + 8 + 26 + 26 + 8 + 1 + 4);
