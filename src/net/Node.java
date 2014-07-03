@@ -72,7 +72,7 @@ public class Node {
 	}
 
 	private void updateErrorStatus(String incError) {
-		synchronized (this.currentErrorMsg) {
+		synchronized (this) {
 			if (this.currentErrorMsg == null) {
 				this.currentErrorMsg = incError;
 			}
@@ -82,7 +82,7 @@ public class Node {
 	public String getErrorMsg(boolean clear) {
 		String errFetch = null;
 
-		synchronized (this.currentErrorMsg) {
+		synchronized (this) {
 			errFetch = this.currentErrorMsg;
 			if (clear) {
 				this.currentErrorMsg = null;
