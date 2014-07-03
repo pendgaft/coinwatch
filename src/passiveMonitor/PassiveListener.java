@@ -14,6 +14,7 @@ public class PassiveListener implements Runnable {
 	private ConnectionListener listener;
 	private Set<Node> bootStrapNode;
 	private Set<Node> connectedNodes;
+	private Set<Node> abortiveNodes;
 	private Set<Node> historicalNodes;
 	private int failedConnectionCounter;
 
@@ -24,6 +25,7 @@ public class PassiveListener implements Runnable {
 	public PassiveListener(Set<Contact> bootStrapNodes) throws IOException {
 		this.bootStrapNode = new HashSet<Node>();
 		this.connectedNodes = new HashSet<Node>();
+		this.abortiveNodes = new HashSet<Node>();
 		this.historicalNodes = new HashSet<Node>();
 		this.failedConnectionCounter = 0;
 		this.listener = new ConnectionListener(this);
@@ -38,9 +40,9 @@ public class PassiveListener implements Runnable {
 		this.pingTestMaster = new NodeTester();
 	}
 
-	public void addNewBootstrapNodes(Set<Contact> bootStrapNodes) {
+	public void addNewBootstrapNodes(Set<Contact> incomingNodes) {
 		synchronized (this.connectedNodes) {
-			for (Contact tContact : bootStrapNodes) {
+			for (Contact tContact : incomingNodes) {
 				Node tNode = new Node(tContact);
 				if (this.bootStrapNode.contains(tNode) || this.connectedNodes.contains(tNode)
 						|| this.historicalNodes.contains(tNode)) {
@@ -52,6 +54,15 @@ public class PassiveListener implements Runnable {
 				}
 			}
 		}
+		
+		/*
+		 * Update the last block constant so we look more normal
+		 */
+		long lastBlock = 0;
+		for(Node tNode: this.bootStrapNode){
+			lastBlock = Math.max(lastBlock, tNode.getLastBlockSeen());
+		}
+		Constants.LAST_BLOCK = lastBlock;
 	}
 
 	public void reportNewNode(Node incNode) {
@@ -60,6 +71,7 @@ public class PassiveListener implements Runnable {
 				this.connectedNodes.add(incNode);
 			}
 		} else {
+			this.abortiveNodes.add(incNode);
 			this.failedConnectionCounter++;
 			incNode.shutdownNode(null);
 		}
@@ -94,7 +106,10 @@ public class PassiveListener implements Runnable {
 				System.out.println("Outgoing connections: " + this.bootStrapNode.size());
 				System.out.println("Incoming connections: " + this.connectedNodes.size());
 				System.out.println("Failed connection attempts: " + this.failedConnectionCounter);
-				this.failureReasonReport();
+				System.out.println("Abort reasons:");
+				this.failureReasonReport(this.abortiveNodes);
+				System.out.println("D/C reasons:");
+				this.failureReasonReport(this.historicalNodes);
 				Thread.sleep(PassiveListener.REPORT_INTERVAL);
 			}
 		} catch (InterruptedException e) {
@@ -102,10 +117,10 @@ public class PassiveListener implements Runnable {
 		}
 	}
 
-	private void failureReasonReport() {
+	private void failureReasonReport(Set<Node> nodeSet) {
 		HashMap<String, Double> errorValues = new HashMap<String, Double>();
 
-		for (Node tNode : this.historicalNodes) {
+		for (Node tNode : nodeSet) {
 			String errString = tNode.getErrorMsg(false);
 			if (!errorValues.containsKey(errString)) {
 				errorValues.put(errString, 0.0);
