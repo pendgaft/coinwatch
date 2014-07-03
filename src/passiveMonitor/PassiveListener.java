@@ -20,7 +20,7 @@ public class PassiveListener implements Runnable {
 
 	private NodeTester pingTestMaster;
 
-	private static final int REPORT_INTERVAL = 5000;
+	private static final int REPORT_INTERVAL = 60000;
 
 	public PassiveListener(Set<Contact> bootStrapNodes) throws IOException {
 		this.bootStrapNode = new HashSet<Node>();
@@ -63,6 +63,7 @@ public class PassiveListener implements Runnable {
 			lastBlock = Math.max(lastBlock, tNode.getLastBlockSeen());
 		}
 		Constants.LAST_BLOCK = lastBlock;
+		System.out.println("Last block set to: " + Constants.LAST_BLOCK);
 	}
 
 	public void reportNewNode(Node incNode) {
