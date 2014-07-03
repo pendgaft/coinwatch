@@ -14,6 +14,7 @@ public class PassiveListener implements Runnable {
 	private ConnectionListener listener;
 	private Set<Node> bootStrapNode;
 	private Set<Node> connectedNodes;
+	private Set<Node> historicalIncomingNodes;
 	private Set<Node> abortiveNodes;
 	private Set<Node> historicalNodes;
 	private int failedConnectionCounter;
@@ -25,6 +26,7 @@ public class PassiveListener implements Runnable {
 	public PassiveListener(Set<Contact> bootStrapNodes) throws IOException {
 		this.bootStrapNode = new HashSet<Node>();
 		this.connectedNodes = new HashSet<Node>();
+		this.historicalIncomingNodes = new HashSet<Node>();
 		this.abortiveNodes = new HashSet<Node>();
 		this.historicalNodes = new HashSet<Node>();
 		this.failedConnectionCounter = 0;
@@ -54,12 +56,12 @@ public class PassiveListener implements Runnable {
 				}
 			}
 		}
-		
+
 		/*
 		 * Update the last block constant so we look more normal
 		 */
 		long lastBlock = 0;
-		for(Node tNode: this.bootStrapNode){
+		for (Node tNode : this.bootStrapNode) {
 			lastBlock = Math.max(lastBlock, tNode.getLastBlockSeen());
 		}
 		Constants.LAST_BLOCK = lastBlock;
@@ -87,7 +89,7 @@ public class PassiveListener implements Runnable {
 		synchronized (this.connectedNodes) {
 			newlyDeadNodes = this.pingTestMaster.runNodeTest(this.connectedNodes);
 			this.connectedNodes.removeAll(newlyDeadNodes);
-			this.historicalNodes.addAll(newlyDeadNodes);
+			this.historicalIncomingNodes.addAll(newlyDeadNodes);
 		}
 
 		/*
@@ -104,13 +106,17 @@ public class PassiveListener implements Runnable {
 		try {
 			while (true) {
 				this.testNodeStatus();
-				System.out.println("Outgoing connections: " + this.bootStrapNode.size());
-				System.out.println("Incoming connections: " + this.connectedNodes.size());
+				System.out.println("Outgoing connections: " + this.bootStrapNode.size() + " active, "
+						+ this.historicalNodes + " dead");
+				System.out.println("Incoming connections: " + this.connectedNodes.size() + " active, "
+						+ this.historicalIncomingNodes + " dead");
 				System.out.println("Failed connection attempts: " + this.failedConnectionCounter);
 				System.out.println("Abort reasons:");
 				this.failureReasonReport(this.abortiveNodes);
 				System.out.println("D/C reasons:");
 				this.failureReasonReport(this.historicalNodes);
+				System.out.println("Incoming D/C reaseons: " );
+				this.failureReasonReport(this.historicalIncomingNodes);
 				Thread.sleep(PassiveListener.REPORT_INTERVAL);
 			}
 		} catch (InterruptedException e) {
