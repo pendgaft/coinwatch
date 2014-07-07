@@ -181,7 +181,11 @@ public class Node {
 			}
 		}
 
-		return this.thinksConnected();
+		boolean con =  this.thinksConnected();
+		if(con){
+			this.parent.setLastSeenDirect(true);
+		}
+		return con;
 	}
 
 	public boolean testConnectionLiveness() {

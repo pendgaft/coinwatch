@@ -55,6 +55,10 @@ public class Contact implements Serializable{
 		return lastSeenDirect;
 	}
 	
+	public void setLastSeenDirect(boolean value){
+		this.lastSeenDirect = value;
+	}
+	
 	public int hashCode(){
 		return this.myIp.hashCode() + this.myPort;
 	}
