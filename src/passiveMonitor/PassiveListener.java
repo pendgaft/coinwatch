@@ -19,11 +19,15 @@ public class PassiveListener implements Runnable {
 	private Set<Node> historicalNodes;
 	private int failedConnectionCounter;
 
+	private BufferedWriter outBuff;
+
 	private NodeTester pingTestMaster;
 
 	private static final int REPORT_INTERVAL = 60000;
 
 	public PassiveListener(Set<Contact> bootStrapNodes) throws IOException {
+		this.outBuff = new BufferedWriter(new FileWriter("passiveLog.txt"));
+
 		this.bootStrapNode = new HashSet<Node>();
 		this.connectedNodes = new HashSet<Node>();
 		this.historicalIncomingNodes = new HashSet<Node>();
@@ -103,6 +107,14 @@ public class PassiveListener implements Runnable {
 	}
 
 	public void run() {
+		long startTime = System.currentTimeMillis();
+		try {
+			this.outBuff.write("time,connected,dead,failed\n");
+		} catch (IOException e) {
+			e.printStackTrace();
+			return;
+		}
+
 		try {
 			while (true) {
 				this.testNodeStatus();
@@ -115,11 +127,17 @@ public class PassiveListener implements Runnable {
 				this.failureReasonReport(this.abortiveNodes);
 				System.out.println("D/C reasons:");
 				this.failureReasonReport(this.historicalNodes);
-				System.out.println("Incoming D/C reaseons: " );
+				System.out.println("Incoming D/C reaseons: ");
 				this.failureReasonReport(this.historicalIncomingNodes);
+
+				long currTime = (System.currentTimeMillis() - startTime) / 1000;
+				this.outBuff.write("" + currTime + "," + this.connectedNodes.size() + ","
+						+ this.historicalIncomingNodes.size() + "," + this.failedConnectionCounter + "\n");
+				this.outBuff.flush();
+
 				Thread.sleep(PassiveListener.REPORT_INTERVAL);
 			}
-		} catch (InterruptedException e) {
+		} catch (InterruptedException | IOException e) {
 			e.printStackTrace();
 		}
 	}
