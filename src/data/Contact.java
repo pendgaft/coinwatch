@@ -67,4 +67,8 @@ public class Contact implements Serializable{
 	public String toString(){
 		return this.myIp.toString() + ":" + this.myPort;
 	}
+	
+	public String getLoggingString(){
+		return this.toString() + "," + this.myTimeStamp + "," + this.lastSeenDirect;
+	}
 }

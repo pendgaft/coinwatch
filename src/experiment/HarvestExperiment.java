@@ -25,40 +25,13 @@ public class HarvestExperiment {
 	private static final int THREAD_COUNT = 60;
 	public static final int MIN_GAIN = 50;
 
-	public HarvestExperiment() {
+	public HarvestExperiment(boolean setupLogger) {
 		Constants.initConstants();
 
-		/*
-		 * Build handlers
-		 */
-		FileHandler logHandler = null;
-		FileHandler summaryHandler = null;
-		SimpleDateFormat df = new SimpleDateFormat("yyyy.MM.dd-HH.mm.ss");
-		String tsString = df.format(new Date());
-		try {
-
-			logHandler = new FileHandler(Constants.LOG_DIR + "harvest-" + tsString + ".out");
-			summaryHandler = new FileHandler(Constants.LOG_DIR + "summary-" + tsString + ".out");
-		} catch (SecurityException | IOException e) {
-			e.printStackTrace();
-			System.exit(-1);
+		if (setupLogger) {
+			LogHelper.initLogger();
 		}
-		logHandler.setLevel(Level.CONFIG);
-		logHandler.setFormatter(new SimpleFormatter());
-		summaryHandler.setLevel(Level.INFO);
-		summaryHandler.setFormatter(new SimpleFormatter());
-		ConsoleHandler conHandler = new ConsoleHandler();
-		conHandler.setLevel(Level.WARNING);
-
-		/*
-		 * Get logger, add handlers
-		 */
 		this.expLogger = Logger.getLogger(Constants.HARVEST_LOG);
-		this.expLogger.setUseParentHandlers(false);
-		this.expLogger.setLevel(Level.FINE);
-		this.expLogger.addHandler(logHandler);
-		this.expLogger.addHandler(conHandler);
-		this.expLogger.addHandler(summaryHandler);
 
 		this.nodesToTest = new HashSet<Node>();
 		this.harvestedContacts = new HashSet<Contact>();
@@ -86,7 +59,7 @@ public class HarvestExperiment {
 		return cloneSet;
 	}
 
-	public void run() throws InterruptedException {
+	public void run(boolean closeNodes) throws InterruptedException {
 
 		long startTime = System.currentTimeMillis();
 
@@ -96,10 +69,13 @@ public class HarvestExperiment {
 
 		for (int counter = 0; counter < this.nodesToTest.size(); counter++) {
 			Node finishedNode = this.holdingContainer.fetchCompleted();
-			Set<Contact> harvestedContacts = finishedNode.getContacts(true);
+			Set<Contact> harvestedContacts = finishedNode.getContacts(closeNodes);
 			this.expLogger.config("Harvested " + harvestedContacts.size());
 			this.harvestedContacts.addAll(harvestedContacts);
-			finishedNode.shutdownNode(null);
+
+			if (closeNodes) {
+				finishedNode.shutdownNode(null);
+			}
 		}
 
 		long time = (System.currentTimeMillis() - startTime);
@@ -115,7 +91,7 @@ public class HarvestExperiment {
 		int newNodesFound = 0;
 		long startTime = System.currentTimeMillis();
 
-		//ZmapSelf zmapper = new ZmapSelf();
+		// ZmapSelf zmapper = new ZmapSelf();
 		ZmapSupplicant zmapper = new ZmapSupplicant();
 
 		// TODO this should be thresholded
@@ -133,7 +109,7 @@ public class HarvestExperiment {
 			} else {
 
 				this.pushNodesToTest(toHarvest);
-				this.run();
+				this.run(true);
 
 				Set<Contact> harvestNodes = this.getHarvestedContacts();
 				harvestNodes.removeAll(allKnownNodes);
@@ -147,10 +123,11 @@ public class HarvestExperiment {
 						+ LogHelper.formatMili(System.currentTimeMillis() - start));
 
 				/*
-				 * Sleep for a bit to let the network bits "recover" from the zmap
+				 * Sleep for a bit to let the network bits "recover" from the
+				 * zmap
 				 */
 				Thread.sleep(60000);
-				
+
 				connTest.pushNodesToTest(zmapPassedNodes);
 				connTest.run();
 
@@ -174,7 +151,7 @@ public class HarvestExperiment {
 
 	public static void main(String args[]) throws IOException, InterruptedException {
 
-		HarvestExperiment self = new HarvestExperiment();
+		HarvestExperiment self = new HarvestExperiment(true);
 		ConnectionExperiment connTest = new ConnectionExperiment(false);
 		self.manageMultiRoundCollection(connTest);
 	}

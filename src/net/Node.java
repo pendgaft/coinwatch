@@ -348,4 +348,8 @@ public class Node {
 			return 0;
 		}
 	}
+	
+	public Contact getContactObject(){
+		return this.parent;
+	}
 }
