@@ -32,13 +32,18 @@ public class IntersectionExperiment {
 		this.harvester = new HarvestExperiment(false);
 		this.zmapper = new ZmapSupplicant();
 
-		this.boostrap();
+		Set<Contact> dnsNodes = ConnectionExperiment.dnsBootStrap();
+		this.boostrap(dnsNodes);
 	}
 
-	public void boostrap() throws InterruptedException {
-		Set<Contact> dnsNodes = ConnectionExperiment.dnsBootStrap();
-		this.connTester.pushNodesToTest(dnsNodes);
-		this.connTester.run();
+	public void boostrap(Set<Contact> testNodes) {
+		this.connTester.pushNodesToTest(testNodes);
+		try {
+			this.connTester.run();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+			System.exit(-1);
+		}
 		this.activeConnections.addAll(this.connTester.getReachableNodes());
 	}
 
@@ -62,8 +67,15 @@ public class IntersectionExperiment {
 				this.contactToConnected.get(tContact).add(tNode.getContactObject());
 			}
 		}
-		
-		//TODO try connecting to new nodes
+
+		if (newNodes.size() > 1000) {
+			try {
+				newNodes = this.zmapper.checkAddresses(newNodes);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+		this.boostrap(newNodes);
 	}
 
 	private void testNodes() {
@@ -85,9 +97,9 @@ public class IntersectionExperiment {
 			BufferedWriter logOut = new BufferedWriter(new FileWriter(Constants.LOG_DIR + "intOut.txt"));
 
 			for (Contact tContact : this.contactToConnected.keySet()) {
-				logOut.write("Contact" + tContact.getLoggingString() + "\n");
 				Set<Contact> nodesWhoKnew = this.contactToConnected.get(tContact);
-				for(Contact tKnowing: nodesWhoKnew){
+				logOut.write("Contact " + tContact.getLoggingString() + "," + nodesWhoKnew.size() + "\n");
+				for (Contact tKnowing : nodesWhoKnew) {
 					logOut.write(tKnowing.toString() + "\n");
 				}
 				logOut.write("\n");
@@ -101,10 +113,11 @@ public class IntersectionExperiment {
 
 	/**
 	 * @param args
-	 * @throws InterruptedException 
+	 * @throws InterruptedException
 	 */
 	public static void main(String[] args) throws InterruptedException {
 		IntersectionExperiment self = new IntersectionExperiment();
+		self.refresh();
 		self.refresh();
 		self.printDump();
 	}
