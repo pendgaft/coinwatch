@@ -13,6 +13,8 @@ import data.Contact;
 public class IntersectionExperiment {
 
 	private HashMap<Contact, Set<Contact>> contactToConnected;
+	private HashMap<Node, HashMap<Contact, Long>> lastActivityMap;
+	private HashMap<Node, Set<Contact>> advancingNodes;
 	private HashSet<Node> activeConnections;
 	private HashSet<Node> historicalNodes;
 
@@ -25,6 +27,8 @@ public class IntersectionExperiment {
 		LogHelper.initLogger();
 
 		this.contactToConnected = new HashMap<Contact, Set<Contact>>();
+		this.lastActivityMap = new HashMap<Node, HashMap<Contact, Long>>();
+		this.advancingNodes = new HashMap<Node, Set<Contact>>();
 		this.activeConnections = new HashSet<Node>();
 		this.historicalNodes = new HashSet<Node>();
 
@@ -46,10 +50,17 @@ public class IntersectionExperiment {
 		}
 		this.activeConnections.addAll(this.connTester.getReachableNodes());
 
+		for (Node tNode : this.activeConnections) {
+			if (!this.advancingNodes.containsKey(tNode)) {
+				this.advancingNodes.put(tNode, new HashSet<Contact>());
+				this.lastActivityMap.put(tNode, new HashMap<Contact, Long>());
+			}
+		}
+
 		/*
-		 * XXX This code works our really gross because there are multiple contact
-		 * objects floating around for a single contact, work to fix that in the
-		 * future?
+		 * XXX This code works our really gross because there are multiple
+		 * contact objects floating around for a single contact, work to fix
+		 * that in the future?
 		 */
 		for (Contact tCon : this.contactToConnected.keySet()) {
 			for (Node tNode : this.activeConnections) {
@@ -103,6 +114,20 @@ public class IntersectionExperiment {
 			e.printStackTrace();
 			System.exit(-1);
 		}
+
+		for (Node tNode : this.activeConnections) {
+			Set<Contact> harvestedNodes = tNode.getContacts(false);
+			HashMap<Contact, Long> timeMap = this.lastActivityMap.get(tNode);
+			Set<Contact> advanceSet = this.advancingNodes.get(tNode);
+			for (Contact tContact : harvestedNodes) {
+				if (!timeMap.containsKey(tContact)) {
+					timeMap.put(tContact, tContact.getLastSeen());
+				} else if (tContact.getLastSeen() > timeMap.get(tContact)) {
+					advanceSet.add(tContact);
+					timeMap.put(tContact, tContact.getLastSeen());
+				}
+			}
+		}
 	}
 
 	private void printDump() {
@@ -110,6 +135,7 @@ public class IntersectionExperiment {
 			BufferedWriter logOut = new BufferedWriter(new FileWriter(Constants.LOG_DIR + "intOut.txt"));
 
 			for (Contact tContact : this.contactToConnected.keySet()) {
+
 				Set<Contact> nodesWhoKnew = this.contactToConnected.get(tContact);
 				logOut.write("Contact " + tContact.getLoggingString() + "," + nodesWhoKnew.size() + "\n");
 				for (Contact tKnowing : nodesWhoKnew) {
@@ -120,7 +146,26 @@ public class IntersectionExperiment {
 
 			logOut.close();
 		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
 
+	private void printActive() {
+		try {
+			BufferedWriter logOut = new BufferedWriter(new FileWriter(Constants.LOG_DIR + "activeOut.txt"));
+
+			for (Node tNode : this.advancingNodes.keySet()) {
+				logOut.write("Contact " + tNode.getContactObject().getLoggingString() + "\n");
+				Set<Contact> advNodes = this.advancingNodes.get(tNode);
+				for (Contact tContact : advNodes) {
+					logOut.write(tContact.toString() + "\n");
+				}
+				logOut.write("\n");
+			}
+
+			logOut.close();
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
 	}
 
@@ -132,7 +177,9 @@ public class IntersectionExperiment {
 		IntersectionExperiment self = new IntersectionExperiment();
 		self.refresh();
 		self.refresh();
-		self.printDump();
+		Thread.sleep(300000);
+		self.refresh();
+		self.printActive();
 	}
 
 }
