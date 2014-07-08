@@ -1,22 +1,23 @@
-package passiveMonitor;
+package experiment;
 
 import java.util.*;
 
 import experiment.ExperimentContainer;
+import experiment.threading.PingThread;
 import data.NodeBooleanPair;
 import net.Node;
 
-public class NodeTester {
+public class PingTester {
 
 	private static final int TESTER_THREADS = 10;
 
 	private ExperimentContainer<Node, NodeBooleanPair> testContainer;
 
-	public NodeTester() {
+	public PingTester() {
 		this.testContainer = new ExperimentContainer<Node, NodeBooleanPair>();
 
-		for (int counter = 0; counter < NodeTester.TESTER_THREADS; counter++) {
-			NodeTesterChild tChild = new NodeTesterChild(this);
+		for (int counter = 0; counter < PingTester.TESTER_THREADS; counter++) {
+			PingThread tChild = new PingThread(this.testContainer);
 			Thread tThread = new Thread(tChild);
 			tThread.setDaemon(true);
 			tThread.start();
@@ -47,13 +48,5 @@ public class NodeTester {
 		}
 
 		return workingNodes;
-	}
-
-	public Node getWork() throws InterruptedException {
-		return this.testContainer.fetchWork();
-	}
-
-	public void reportResult(NodeBooleanPair result) {
-		this.testContainer.returnCompletedNode(result);
 	}
 }

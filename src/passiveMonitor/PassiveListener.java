@@ -7,6 +7,7 @@ import logging.LogHelper;
 
 import data.Contact;
 import experiment.ConnectionExperiment;
+import experiment.PingTester;
 import net.*;
 
 public class PassiveListener implements Runnable {
@@ -21,7 +22,7 @@ public class PassiveListener implements Runnable {
 
 	private BufferedWriter outBuff;
 
-	private NodeTester pingTestMaster;
+	private PingTester pingTestMaster;
 
 	private static final int REPORT_INTERVAL = 60000;
 
@@ -43,7 +44,7 @@ public class PassiveListener implements Runnable {
 		listenerThread.setDaemon(true);
 		listenerThread.start();
 
-		this.pingTestMaster = new NodeTester();
+		this.pingTestMaster = new PingTester();
 	}
 
 	public void addNewBootstrapNodes(Set<Contact> incomingNodes) {

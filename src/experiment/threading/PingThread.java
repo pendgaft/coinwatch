@@ -1,13 +1,14 @@
-package passiveMonitor;
+package experiment.threading;
 
+import experiment.ExperimentContainer;
 import data.NodeBooleanPair;
 import net.Node;
 
-public class NodeTesterChild implements Runnable {
+public class PingThread implements Runnable {
 
-	private NodeTester myParent;
+	private ExperimentContainer<Node, NodeBooleanPair> myParent;
 
-	public NodeTesterChild(NodeTester parent) {
+	public PingThread(ExperimentContainer<Node, NodeBooleanPair> parent) {
 		this.myParent = parent;
 	}
 
@@ -16,9 +17,9 @@ public class NodeTesterChild implements Runnable {
 
 		try {
 			while (true) {
-				Node toTest = this.myParent.getWork();
+				Node toTest = this.myParent.fetchWork();
 				boolean pingResult = toTest.testConnectionLiveness();
-				this.myParent.reportResult(new NodeBooleanPair(toTest, pingResult));
+				this.myParent.returnCompletedNode(new NodeBooleanPair(toTest, pingResult));
 			}
 		} catch (InterruptedException e) {
 			e.printStackTrace();
