@@ -12,10 +12,13 @@ import scijava.stats.BasicStats;
 public class IntersectParser {
 
 	private HashMap<Contact, Set<Contact>> contactKnownBy;
+	private HashMap<Contact, Set<Contact>> inverted;
 
 	public IntersectParser(String logFile) throws IOException {
 		this.contactKnownBy = new HashMap<Contact, Set<Contact>>();
+		this.inverted = new HashMap<Contact, Set<Contact>>();
 		this.parseContactKnownByMap(logFile);
+		this.buildInverted();
 	}
 
 	private void parseContactKnownByMap(String logFile) throws IOException {
@@ -52,19 +55,32 @@ public class IntersectParser {
 		inBuff.close();
 	}
 
-	public void writeNumberCDF(String outFile) throws IOException {
+	private void buildInverted() {
+		for (Contact firstCon : this.contactKnownBy.keySet()) {
+			Set<Contact> secondSet = this.contactKnownBy.get(firstCon);
+
+			for (Contact secondCon : secondSet) {
+				if (!this.inverted.containsKey(secondCon)) {
+					this.inverted.put(secondCon, new HashSet<Contact>());
+				}
+				this.inverted.get(secondCon).add(firstCon);
+			}
+		}
+	}
+
+	public void writeNumberCDF(HashMap<Contact, Set<Contact>> map, String outFile) throws IOException {
 		List<Double> sizesList = new ArrayList<Double>(this.contactKnownBy.size());
-		for (Contact tCon : this.contactKnownBy.keySet()) {
-			sizesList.add((double) this.contactKnownBy.get(tCon).size());
+		for (Contact tCon : map.keySet()) {
+			sizesList.add((double) map.get(tCon).size());
 		}
 		CDF.printCDF(sizesList, outFile);
 	}
 
-	public void writeNumberCDFSeen(String outFile, boolean seen) throws IOException {
+	public void writeNumberCDFSeen(HashMap<Contact, Set<Contact>> map, String outFile, boolean seen) throws IOException {
 		List<Double> sizesList = new ArrayList<Double>(this.contactKnownBy.size());
-		for (Contact tCon : this.contactKnownBy.keySet()) {
+		for (Contact tCon : map.keySet()) {
 			if (tCon.isLastSeenDirect() == seen) {
-				sizesList.add((double) this.contactKnownBy.get(tCon).size());
+				sizesList.add((double) map.get(tCon).size());
 			}
 		}
 		CDF.printCDF(sizesList, outFile);
@@ -93,12 +109,13 @@ public class IntersectParser {
 	/**
 	 * @param args
 	 */
-	public static void main(String[] args) throws IOException{
+	public static void main(String[] args) throws IOException {
 		IntersectParser self = new IntersectParser("logs/intOut.txt");
+		System.out.println("learned from " + self.contactKnownBy.size() + " active nodes " + self.inverted.size());
 		self.getTimeStampStats();
-		self.writeNumberCDF("logs/fullCDF.csv");
-		self.writeNumberCDFSeen("logs/directCDF.csv", true);
-		self.writeNumberCDFSeen("logs/nonConnected.csv", false);
+		self.writeNumberCDF(self.inverted, "logs/active-fullCDF.csv");
+		self.writeNumberCDFSeen(self.inverted, "logs/active-directCDF.csv", true);
+		self.writeNumberCDFSeen(self.inverted, "logs/active-nonConnected.csv", false);
 	}
 
 }
