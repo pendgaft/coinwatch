@@ -78,7 +78,9 @@ public class PassiveListener implements Runnable {
 				this.connectedNodes.add(incNode);
 			}
 		} else {
-			this.abortiveNodes.add(incNode);
+			synchronized (this.abortiveNodes) {
+				this.abortiveNodes.add(incNode);
+			}
 			this.failedConnectionCounter++;
 			incNode.shutdownNode(null);
 		}
@@ -119,9 +121,9 @@ public class PassiveListener implements Runnable {
 			while (true) {
 				this.testNodeStatus();
 				System.out.println("Outgoing connections: " + this.bootStrapNode.size() + " active, "
-						+ this.historicalNodes + " dead");
+						+ this.historicalNodes.size() + " dead");
 				System.out.println("Incoming connections: " + this.connectedNodes.size() + " active, "
-						+ this.historicalIncomingNodes + " dead");
+						+ this.historicalIncomingNodes.size() + " dead");
 				System.out.println("Failed connection attempts: " + this.failedConnectionCounter);
 				System.out.println("Abort reasons:");
 				this.failureReasonReport(this.abortiveNodes);
@@ -145,12 +147,14 @@ public class PassiveListener implements Runnable {
 	private void failureReasonReport(Set<Node> nodeSet) {
 		HashMap<String, Double> errorValues = new HashMap<String, Double>();
 
-		for (Node tNode : nodeSet) {
-			String errString = tNode.getErrorMsg(false);
-			if (!errorValues.containsKey(errString)) {
-				errorValues.put(errString, 0.0);
+		synchronized (nodeSet) {
+			for (Node tNode : nodeSet) {
+				String errString = tNode.getErrorMsg(false);
+				if (!errorValues.containsKey(errString)) {
+					errorValues.put(errString, 0.0);
+				}
+				errorValues.put(errString, errorValues.get(errString) + 1.0);
 			}
-			errorValues.put(errString, errorValues.get(errString) + 1.0);
 		}
 
 		List<String> orderList = LogHelper.buildDecendingList(errorValues);
