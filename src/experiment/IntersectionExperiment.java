@@ -177,8 +177,10 @@ public class IntersectionExperiment {
 		IntersectionExperiment self = new IntersectionExperiment();
 		self.refresh();
 		self.refresh();
-		Thread.sleep(300000);
-		self.refresh();
+		for(int counter = 0; counter < 6; counter++){ 
+		    Thread.sleep(300000);
+		    self.refresh();
+		}
 		self.printActive();
 	}
 
