@@ -45,6 +45,19 @@ public class IntersectionExperiment {
 			System.exit(-1);
 		}
 		this.activeConnections.addAll(this.connTester.getReachableNodes());
+
+		/*
+		 * XXX This code works our really gross because there are multiple contact
+		 * objects floating around for a single contact, work to fix that in the
+		 * future?
+		 */
+		for (Contact tCon : this.contactToConnected.keySet()) {
+			for (Node tNode : this.activeConnections) {
+				if (tNode.getContactObject().equals(tCon)) {
+					tCon.setLastSeenDirect(true);
+				}
+			}
+		}
 	}
 
 	private void refresh() {
