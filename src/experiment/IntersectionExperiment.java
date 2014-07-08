@@ -158,7 +158,7 @@ public class IntersectionExperiment {
 				logOut.write("Contact " + tNode.getContactObject().getLoggingString() + "\n");
 				Set<Contact> advNodes = this.advancingNodes.get(tNode);
 				for (Contact tContact : advNodes) {
-					logOut.write(tContact.toString() + "\n");
+					logOut.write(tContact.getLoggingString() + "\n");
 				}
 				logOut.write("\n");
 			}
