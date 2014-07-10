@@ -26,6 +26,8 @@ public class Node {
 	private Version remoteVersionMessage;
 	private HashSet<Contact> learnedContacts;
 
+	private Semaphore transactionLine;
+	private String currentTransaction;
 	private Semaphore transactionFlag;
 
 	public Node(Contact parentContact) {
@@ -44,6 +46,8 @@ public class Node {
 		this.learnedContacts = new HashSet<Contact>();
 
 		this.transactionFlag = new Semaphore(0);
+		this.transactionLine = new Semaphore(1);
+		this.currentTransaction = Constants.NONE_TX;
 	}
 
 	public Node(Socket incSocket) throws IOException {
@@ -60,7 +64,43 @@ public class Node {
 
 		this.remoteVersionMessage = null;
 		this.learnedContacts = new HashSet<Contact>();
+
 		this.transactionFlag = new Semaphore(0);
+		this.transactionLine = new Semaphore(1);
+		this.currentTransaction = Constants.NONE_TX;
+	}
+
+	private boolean initiateTransaction(String txName) {
+		try {
+			this.transactionLine.acquire();
+		} catch (InterruptedException e) {
+			return false;
+		}
+		synchronized (this) {
+			this.transactionFlag.drainPermits();
+			this.currentTransaction = txName;
+		}
+
+		return true;
+	}
+
+	private void endTransaction() {
+		synchronized (this) {
+			this.currentTransaction = Constants.NONE_TX;
+			this.transactionFlag.drainPermits();
+		}
+		this.transactionLine.release();
+	}
+
+	private void releaseIfInTransaction(String txName) {
+		boolean match = false;
+		synchronized (this) {
+			match = this.currentTransaction.equals(txName);
+		}
+
+		if (match) {
+			this.transactionFlag.release();
+		}
 	}
 
 	public int hashCode() {
@@ -98,6 +138,7 @@ public class Node {
 		if (this.thinksConnected()) {
 			return true;
 		}
+		this.initiateTransaction(Constants.CONNECT_TX);
 
 		/*
 		 * Actually open the network connection
@@ -170,6 +211,8 @@ public class Node {
 			}
 			return false;
 		}
+		this.endTransaction();
+
 		/*
 		 * evaluate if the try acquire succeeded
 		 */
@@ -182,8 +225,8 @@ public class Node {
 			}
 		}
 
-		boolean con =  this.thinksConnected();
-		if(con){
+		boolean con = this.thinksConnected();
+		if (con) {
 			this.parent.setLastSeenDirect(true);
 		}
 		return con;
@@ -191,6 +234,10 @@ public class Node {
 
 	public boolean testConnectionLiveness() {
 		if (!this.thinksConnected()) {
+			return false;
+		}
+
+		if (!this.initiateTransaction(Constants.PING_TX)) {
 			return false;
 		}
 
@@ -210,7 +257,6 @@ public class Node {
 		 * Block on response, we don't actually need to error here, as we'll
 		 * error during the test beneath
 		 */
-		this.transactionFlag.drainPermits();
 		boolean waitSuccess = false;
 		try {
 			waitSuccess = this.transactionFlag.tryAcquire(Constants.TRANSACTION_TIMEOUT,
@@ -220,6 +266,7 @@ public class Node {
 			 * Deal w/ silently, not a big deal honestly
 			 */
 		}
+		this.endTransaction();
 
 		if (waitSuccess) {
 			if (this.pongNonce != null) {
@@ -232,7 +279,7 @@ public class Node {
 				this.shutdownNode("Ping reply still null (shouldn't get here...).");
 				return false;
 			}
-		}else{
+		} else {
 			this.shutdownNode("Timeout waiting for ping reply");
 			return false;
 		}
@@ -252,12 +299,12 @@ public class Node {
 		}
 
 		this.connectionState += 8;
-		this.transactionFlag.release();
+		this.releaseIfInTransaction(Constants.CONNECT_TX);
 	}
 
 	public void recievedVerAck() {
 		this.connectionState += 2;
-		this.transactionFlag.release();
+		this.releaseIfInTransaction(Constants.CONNECT_TX);
 	}
 
 	public void recievedAddr(byte[] advPayload) {
@@ -265,10 +312,15 @@ public class Node {
 		List<Contact> incContacts = incMessage.getLearnedContacts();
 		synchronized (this.learnedContacts) {
 			/*
-			 * We need to remove the old contact objects first, adding in the new ones
+			 * We need to remove the old contact objects first, adding in the
+			 * new ones
 			 */
 			this.learnedContacts.removeAll(incContacts);
 			this.learnedContacts.addAll(incContacts);
+		}
+
+		if (incContacts.size() < 1000) {
+			this.releaseIfInTransaction(Constants.GETADDR_TX);
 		}
 	}
 
@@ -287,10 +339,9 @@ public class Node {
 	public void recievedPong(byte[] pongPayload) {
 		Pong incPong = new Pong(pongPayload);
 		this.pongNonce = incPong.getNonceStr();
-		this.transactionFlag.release();
+		this.releaseIfInTransaction(Constants.PING_TX);
 	}
 
-	// XXX is there an issue with multiple places calling this at the same time?
 	public void shutdownNode(String errorMessage) {
 		this.updateErrorStatus(errorMessage);
 
@@ -305,6 +356,9 @@ public class Node {
 	public void querryForNodes() {
 
 		GetAddr outMsg = new GetAddr();
+
+		this.initiateTransaction(Constants.GETADDR_TX);
+
 		try {
 			this.oStream.write(outMsg.getBytes());
 		} catch (IOException e) {
@@ -312,10 +366,11 @@ public class Node {
 		}
 
 		try {
-			Thread.sleep(Constants.TRANSACTION_TIMEOUT);
+			this.transactionFlag.tryAcquire(Constants.TRANSACTION_TIMEOUT, Constants.CONNECT_TIMEOUT_UNIT);
 		} catch (InterruptedException e) {
 			return;
 		}
+		this.endTransaction();
 	}
 
 	public void clearContacts() {
@@ -357,8 +412,8 @@ public class Node {
 			return 0;
 		}
 	}
-	
-	public Contact getContactObject(){
+
+	public Contact getContactObject() {
 		return this.parent;
 	}
 }
