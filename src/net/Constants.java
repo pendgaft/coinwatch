@@ -11,7 +11,7 @@ public class Constants {
 
 	public static final int CONNECT_TIMEOUT = 10000;
 	public static final TimeUnit CONNECT_TIMEOUT_UNIT = TimeUnit.MILLISECONDS;
-	public static final long TRANSACTION_TIMEOUT = 5000;
+	public static final long TRANSACTION_TIMEOUT = 15000;
 	public static final TimeUnit TRANSACTION_TIMEOUT_UNIT = TimeUnit.MILLISECONDS;
 
 	public static final int MAX_ADDR_ADV = 1000;
@@ -23,6 +23,11 @@ public class Constants {
 	public static final String PING_CMD = "ping";
 	public static final String PONG_CMD = "pong";
 	public static final String REJECT_CMD = "reject";
+	
+	public static final String PING_TX = "ping";
+	public static final String GETADDR_TX = "getaddr";
+	public static final String CONNECT_TX = "connect";
+	public static final String NONE_TX = "none";
 
 	public static final String HARVEST_LOG = "experiment.harvestlog";
 	public static final String PASSIVE_MON_LOG = "passiveMonitor.passiveclient";
