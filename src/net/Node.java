@@ -264,6 +264,10 @@ public class Node {
 		Addr incMessage = new Addr(advPayload);
 		List<Contact> incContacts = incMessage.getLearnedContacts();
 		synchronized (this.learnedContacts) {
+			/*
+			 * We need to remove the old contact objects first, adding in the new ones
+			 */
+			this.learnedContacts.removeAll(incContacts);
 			this.learnedContacts.addAll(incContacts);
 		}
 	}

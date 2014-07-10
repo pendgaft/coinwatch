@@ -3,6 +3,8 @@ package experiment;
 import java.io.*;
 import java.util.*;
 
+import scijava.stats.CDF;
+
 import logging.LogHelper;
 
 import zmap.ZmapSupplicant;
@@ -12,15 +14,37 @@ import data.Contact;
 
 public class IntersectionExperiment {
 
+	/**
+	 * Map that stores all the nodes we learn about. The map is keyed by the
+	 * node in question, and maps to the set of all nodes that know about it.
+	 */
 	private HashMap<Contact, Set<Contact>> contactToConnected;
+
+	/**
+	 * Map that stores the time stamps for all known nodes. The map is keyed by
+	 * the node giving the time stamp, mapping to an internal map which stores
+	 * between client and timestamp. Slight duplication of data since the
+	 * timestamp is in the contact object, but makes life cleaner.
+	 */
 	private HashMap<Node, HashMap<Contact, Long>> lastActivityMap;
+
+	/**
+	 * Map that stores nodes which we see advance, map is keyed by the node who
+	 * reported advancment, mapped to a set of clients that advanced (are
+	 * online)
+	 */
 	private HashMap<Node, Set<Contact>> advancingNodes;
+
+	private List<Double> advancingWindowList;
+
 	private HashSet<Node> activeConnections;
 	private HashSet<Node> historicalNodes;
 
 	private ConnectionExperiment connTester;
 	private HarvestExperiment harvester;
 	private ZmapSupplicant zmapper;
+
+	private static final long SAMPLE_INTERVAL = 300000;
 
 	public IntersectionExperiment() throws InterruptedException {
 		Constants.initConstants();
@@ -29,6 +53,8 @@ public class IntersectionExperiment {
 		this.contactToConnected = new HashMap<Contact, Set<Contact>>();
 		this.lastActivityMap = new HashMap<Node, HashMap<Contact, Long>>();
 		this.advancingNodes = new HashMap<Node, Set<Contact>>();
+		this.advancingWindowList = new LinkedList<Double>();
+
 		this.activeConnections = new HashSet<Node>();
 		this.historicalNodes = new HashSet<Node>();
 
@@ -92,7 +118,7 @@ public class IntersectionExperiment {
 			}
 		}
 
-		if (newNodes.size() > 1000) {
+		if (newNodes.size() > 500) {
 			try {
 				newNodes = this.zmapper.checkAddresses(newNodes);
 			} catch (IOException e) {
@@ -123,6 +149,12 @@ public class IntersectionExperiment {
 				if (!timeMap.containsKey(tContact)) {
 					timeMap.put(tContact, tContact.getLastSeen());
 				} else if (tContact.getLastSeen() > timeMap.get(tContact)) {
+					this.advancingWindowList.add((double) (tContact.getLastSeen() - timeMap.get(tContact)));
+
+					/*
+					 * Clear out any old objects, put in the new one
+					 */
+					advanceSet.remove(tContact);
 					advanceSet.add(tContact);
 					timeMap.put(tContact, tContact.getLastSeen());
 				}
@@ -130,9 +162,9 @@ public class IntersectionExperiment {
 		}
 	}
 
-	private void printDump() {
+	private void printAllLearnedNodes() {
 		try {
-			BufferedWriter logOut = new BufferedWriter(new FileWriter(Constants.LOG_DIR + "intOut.txt"));
+			BufferedWriter logOut = new BufferedWriter(new FileWriter(Constants.LOG_DIR + "learnedOut.txt"));
 
 			for (Contact tContact : this.contactToConnected.keySet()) {
 
@@ -150,7 +182,7 @@ public class IntersectionExperiment {
 		}
 	}
 
-	private void printActive() {
+	private void printAllActiveNodes() {
 		try {
 			BufferedWriter logOut = new BufferedWriter(new FileWriter(Constants.LOG_DIR + "activeOut.txt"));
 
@@ -168,6 +200,14 @@ public class IntersectionExperiment {
 			e.printStackTrace();
 		}
 	}
+	
+	private void printOtherStats(){
+		try{
+			CDF.printCDF(this.advancingWindowList, Constants.LOG_DIR + "advWindowCDF.csv");
+		} catch(IOException e){
+			e.printStackTrace();
+		}
+	}
 
 	/**
 	 * @param args
@@ -177,11 +217,13 @@ public class IntersectionExperiment {
 		IntersectionExperiment self = new IntersectionExperiment();
 		self.refresh();
 		self.refresh();
-		for(int counter = 0; counter < 6; counter++){ 
-		    Thread.sleep(300000);
-		    self.refresh();
+		for (int counter = 0; counter < 6; counter++) {
+			Thread.sleep(IntersectionExperiment.SAMPLE_INTERVAL);
+			self.refresh();
 		}
-		self.printActive();
+		self.printAllLearnedNodes();
+		self.printAllActiveNodes();
+		self.printOtherStats();
 	}
 
 }
