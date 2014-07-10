@@ -69,7 +69,7 @@ public class HarvestExperiment {
 
 		for (int counter = 0; counter < this.nodesToTest.size(); counter++) {
 			Node finishedNode = this.holdingContainer.fetchCompleted();
-			Set<Contact> harvestedContacts = finishedNode.getContacts(closeNodes);
+			Set<Contact> harvestedContacts = finishedNode.getContacts();
 			this.expLogger.config("Harvested " + harvestedContacts.size());
 			this.harvestedContacts.addAll(harvestedContacts);
 

@@ -107,7 +107,7 @@ public class IntersectionExperiment {
 
 		Set<Contact> newNodes = new HashSet<Contact>();
 		for (Node tNode : this.activeConnections) {
-			Set<Contact> knownNodes = tNode.getContacts(false);
+			Set<Contact> knownNodes = tNode.getContacts();
 
 			for (Contact tContact : knownNodes) {
 				if (!this.contactToConnected.containsKey(tContact)) {
@@ -142,7 +142,7 @@ public class IntersectionExperiment {
 		}
 
 		for (Node tNode : this.activeConnections) {
-			Set<Contact> harvestedNodes = tNode.getContacts(false);
+			Set<Contact> harvestedNodes = tNode.getContacts();
 			HashMap<Contact, Long> timeMap = this.lastActivityMap.get(tNode);
 			Set<Contact> advanceSet = this.advancingNodes.get(tNode);
 			for (Contact tContact : harvestedNodes) {
