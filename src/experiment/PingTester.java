@@ -20,6 +20,7 @@ public class PingTester {
 			PingThread tChild = new PingThread(this.testContainer);
 			Thread tThread = new Thread(tChild);
 			tThread.setDaemon(true);
+			tThread.setName("Ping Worker " + counter);
 			tThread.start();
 		}
 	}

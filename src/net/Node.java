@@ -132,6 +132,7 @@ public class Node {
 		IncomingParser listener = new IncomingParser(this, this.iStream);
 		this.listenerThread = new Thread(listener);
 		this.listenerThread.setDaemon(true);
+		this.listenerThread.setName("Incoming Parser: " + this.nodeSocket.getInetAddress().toString());
 		this.listenerThread.start();
 
 		/*
