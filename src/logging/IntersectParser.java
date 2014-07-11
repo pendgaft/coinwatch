@@ -11,12 +11,12 @@ import scijava.stats.BasicStats;
 
 public class IntersectParser {
 
-	private HashMap<Contact, Set<Contact>> contactKnownBy;
-	private HashMap<Contact, Set<Contact>> inverted;
+	private HashMap<Contact, Set<Contact>> advancingNodesByReporting;
+	private HashMap<Contact, Set<Contact>> advancingInverted;
 
 	public IntersectParser(String logFile) throws IOException {
-		this.contactKnownBy = new HashMap<Contact, Set<Contact>>();
-		this.inverted = new HashMap<Contact, Set<Contact>>();
+		this.advancingNodesByReporting = new HashMap<Contact, Set<Contact>>();
+		this.advancingInverted = new HashMap<Contact, Set<Contact>>();
 		this.parseContactKnownByMap(logFile);
 		this.buildInverted();
 	}
@@ -24,7 +24,7 @@ public class IntersectParser {
 	private void parseContactKnownByMap(String logFile) throws IOException {
 		BufferedReader inBuff = new BufferedReader(new FileReader(logFile));
 		Pattern parentPattern = Pattern.compile("Contact [^/]*/(.+):(\\d+),(\\d+),([^,]+)");
-		Pattern knowsPattern = Pattern.compile("[^/]*/(.+):(\\d+)");
+		Pattern knowsPattern = Pattern.compile("[^/]*/(.+):(\\d+),(\\d+)");
 
 		Contact parentContact = null;
 		while (inBuff.ready()) {
@@ -39,15 +39,15 @@ public class IntersectParser {
 			if (parentMatch.find()) {
 				parentContact = new Contact(InetAddress.getByName(parentMatch.group(1)), Integer.parseInt(parentMatch
 						.group(2)), Long.parseLong(parentMatch.group(3)), Boolean.parseBoolean(parentMatch.group(4)));
-				this.contactKnownBy.put(parentContact, new HashSet<Contact>());
+				this.advancingNodesByReporting.put(parentContact, new HashSet<Contact>());
 				continue;
 			}
 
 			Matcher knowsMatch = knowsPattern.matcher(line);
 			if (knowsMatch.find()) {
 				Contact tContact = new Contact(InetAddress.getByName(knowsMatch.group(1)), Integer.parseInt(knowsMatch
-						.group(2)));
-				this.contactKnownBy.get(parentContact).add(tContact);
+						.group(2)), Long.parseLong(knowsMatch.group(3)), false);
+				this.advancingNodesByReporting.get(parentContact).add(tContact);
 				continue;
 			}
 		}
@@ -56,20 +56,20 @@ public class IntersectParser {
 	}
 
 	private void buildInverted() {
-		for (Contact firstCon : this.contactKnownBy.keySet()) {
-			Set<Contact> secondSet = this.contactKnownBy.get(firstCon);
+		for (Contact firstCon : this.advancingNodesByReporting.keySet()) {
+			Set<Contact> secondSet = this.advancingNodesByReporting.get(firstCon);
 
 			for (Contact secondCon : secondSet) {
-				if (!this.inverted.containsKey(secondCon)) {
-					this.inverted.put(secondCon, new HashSet<Contact>());
+				if (!this.advancingInverted.containsKey(secondCon)) {
+					this.advancingInverted.put(secondCon, new HashSet<Contact>());
 				}
-				this.inverted.get(secondCon).add(firstCon);
+				this.advancingInverted.get(secondCon).add(firstCon);
 			}
 		}
 	}
 
 	public void writeNumberCDF(HashMap<Contact, Set<Contact>> map, String outFile) throws IOException {
-		List<Double> sizesList = new ArrayList<Double>(this.contactKnownBy.size());
+		List<Double> sizesList = new ArrayList<Double>(this.advancingNodesByReporting.size());
 		for (Contact tCon : map.keySet()) {
 			sizesList.add((double) map.get(tCon).size());
 		}
@@ -77,7 +77,7 @@ public class IntersectParser {
 	}
 
 	public void writeNumberCDFSeen(HashMap<Contact, Set<Contact>> map, String outFile, boolean seen) throws IOException {
-		List<Double> sizesList = new ArrayList<Double>(this.contactKnownBy.size());
+		List<Double> sizesList = new ArrayList<Double>(this.advancingNodesByReporting.size());
 		for (Contact tCon : map.keySet()) {
 			if (tCon.isLastSeenDirect() == seen) {
 				sizesList.add((double) map.get(tCon).size());
@@ -87,11 +87,11 @@ public class IntersectParser {
 	}
 
 	public void getTimeStampStats() {
-		List<Double> tsList = new ArrayList<Double>(this.contactKnownBy.size());
+		List<Double> tsList = new LinkedList<Double>();
 
-		for (Contact tCon : this.contactKnownBy.keySet()) {
-			if (tCon.getLastSeen() != 0 && (!tCon.isLastSeenDirect())) {
-				tsList.add((double) tCon.getLastSeen());
+		for (Contact tCon : this.advancingNodesByReporting.keySet()) {
+			for(Contact tAdvancing: this.advancingNodesByReporting.get(tCon)){
+				tsList.add((double)tAdvancing.getLastSeen());
 			}
 		}
 
@@ -110,12 +110,10 @@ public class IntersectParser {
 	 * @param args
 	 */
 	public static void main(String[] args) throws IOException {
-		IntersectParser self = new IntersectParser("logs/intOut.txt");
-		System.out.println("learned from " + self.contactKnownBy.size() + " active nodes " + self.inverted.size());
+		IntersectParser self = new IntersectParser("logs/activeOut.txt");
+		System.out.println("learned from " + self.advancingNodesByReporting.size() + " active nodes " + self.advancingInverted.size());
 		self.getTimeStampStats();
-		self.writeNumberCDF(self.inverted, "logs/active-fullCDF.csv");
-		self.writeNumberCDFSeen(self.inverted, "logs/active-directCDF.csv", true);
-		self.writeNumberCDFSeen(self.inverted, "logs/active-nonConnected.csv", false);
+		self.writeNumberCDF(self.advancingInverted, "logs/active-fullCDF.csv");
 	}
 
 }
