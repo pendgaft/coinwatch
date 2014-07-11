@@ -106,6 +106,11 @@ public class Node {
 	public int hashCode() {
 		return this.parent.hashCode();
 	}
+	
+	public boolean equals(Object rhs){
+		Node rhsNode = (Node)rhs;
+		return rhsNode.getContactObject().equals(this.getContactObject());
+	}
 
 	public boolean thinksConnected() {
 		return this.connectionState == 15;
@@ -197,6 +202,7 @@ public class Node {
 			}
 			return false;
 		}
+		this.parent.updateTimeStamp(((long)Math.floor(System.currentTimeMillis() / 1000)), false);
 		this.connectionState += 1;
 
 		boolean waitResult = false;
