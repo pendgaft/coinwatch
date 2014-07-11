@@ -1,6 +1,8 @@
 package experiment;
 
 import java.io.*;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.*;
 
 import scijava.stats.CDF;
@@ -34,6 +36,8 @@ public class IntersectionExperiment {
 	 * online)
 	 */
 	private HashMap<Node, Set<Contact>> advancingNodes;
+	
+	private HashMap<Node, Long> timeSkewFix;
 
 	private List<Double> advancingWindowList;
 
@@ -43,10 +47,11 @@ public class IntersectionExperiment {
 	private ConnectionExperiment connTester;
 	private HarvestExperiment harvester;
 	private ZmapSupplicant zmapper;
+	private Contact selfContact;
 
 	private static final long SAMPLE_INTERVAL = 300000;
 
-	public IntersectionExperiment() throws InterruptedException {
+	public IntersectionExperiment() throws InterruptedException, UnknownHostException {
 		Constants.initConstants();
 		LogHelper.initLogger();
 
@@ -54,6 +59,7 @@ public class IntersectionExperiment {
 		this.lastActivityMap = new HashMap<Node, HashMap<Contact, Long>>();
 		this.advancingNodes = new HashMap<Node, Set<Contact>>();
 		this.advancingWindowList = new LinkedList<Double>();
+		this.timeSkewFix = new HashMap<Node, Long>();
 
 		this.activeConnections = new HashSet<Node>();
 		this.historicalNodes = new HashSet<Node>();
@@ -61,6 +67,7 @@ public class IntersectionExperiment {
 		this.connTester = new ConnectionExperiment(false);
 		this.harvester = new HarvestExperiment(false);
 		this.zmapper = new ZmapSupplicant();
+		this.selfContact = new Contact(InetAddress.getLocalHost(), Constants.DEFAULT_PORT);
 
 		Set<Contact> dnsNodes = ConnectionExperiment.dnsBootStrap();
 		this.boostrap(dnsNodes);
@@ -158,6 +165,12 @@ public class IntersectionExperiment {
 					advanceSet.add(tContact);
 					timeMap.put(tContact, tContact.getLastSeen());
 				}
+				
+				if(tContact.equals(this.selfContact)){
+					if(!this.timeSkewFix.containsKey(tNode)){
+						this.timeSkewFix.put(tNode, tContact.getLastSeen());
+					}
+				}
 			}
 		}
 	}
@@ -208,22 +221,37 @@ public class IntersectionExperiment {
 			e.printStackTrace();
 		}
 	}
+	
+	private void printTimeSkewTest(){
+		try{
+			BufferedWriter outBuff = new BufferedWriter(new FileWriter(Constants.LOG_DIR + "timeSkewTest.csv"));
+			
+			for(Node tNode: this.activeConnections){
+				outBuff.write(tNode.getContactObject().getLoggingString() + "," + this.timeSkewFix.get(tNode) + "\n");
+			}
+			
+			outBuff.close();
+		} catch(IOException e){
+			e.printStackTrace();
+		}
+	}
 
 	/**
 	 * @param args
 	 * @throws InterruptedException
 	 */
-	public static void main(String[] args) throws InterruptedException {
+	public static void main(String[] args) throws InterruptedException, UnknownHostException {
 		IntersectionExperiment self = new IntersectionExperiment();
 		self.refresh();
 		self.refresh();
-		for (int counter = 0; counter < 6; counter++) {
-			Thread.sleep(IntersectionExperiment.SAMPLE_INTERVAL);
-			self.refresh();
-		}
+//		for (int counter = 0; counter < 6; counter++) {
+//			Thread.sleep(IntersectionExperiment.SAMPLE_INTERVAL);
+//			self.refresh();
+//		}
 		self.printAllLearnedNodes();
 		self.printAllActiveNodes();
 		self.printOtherStats();
+		self.printTimeSkewTest();
 	}
 
 }
