@@ -5,6 +5,8 @@ import java.util.regex.*;
 import java.io.*;
 import java.net.InetAddress;
 
+import net.Constants;
+
 import data.Contact;
 import scijava.stats.CDF;
 import scijava.stats.BasicStats;
@@ -105,15 +107,50 @@ public class IntersectParser {
 		System.out.println("Min/Max: " + min + ", " + max);
 		System.out.println("Med/Mean/StdDev " + median + ", " + mean + ", " + stdDev);
 	}
+	
+	private static void parseTimeSkew() throws IOException{
+		BufferedReader inBuff = new BufferedReader(new FileReader(Constants.LOG_DIR + "timeSkewTest.csv"));
+		
+		Pattern nullPattern = Pattern.compile("[^/]*/(.+):(\\d+),(\\d+),([^,]+),null");
+		Pattern dataPattern = Pattern.compile("[^/]*/.+:\\d+,(\\d+),[^,]+,(\\d+)");
+		
+		int notSeenCount = 0;
+		List<Double> delta = new LinkedList<Double>();
+		
+		while(inBuff.ready()){
+			String line = inBuff.readLine().trim();
+			if(line.length() == 0){
+				continue;
+			}
+			
+			Matcher nullMatch = nullPattern.matcher(line);
+			if(nullMatch.find()){
+				notSeenCount++;
+				continue;
+			}
+			
+			Matcher dataMatch = dataPattern.matcher(line);
+			if(dataMatch.find()){
+				delta.add(Double.parseDouble(dataMatch.group(2)) - Double.parseDouble(dataMatch.group(1)));
+			}
+		}
+		
+		inBuff.close();
+		
+		System.out.println("No record of us: " + notSeenCount + ", record of us: " + delta.size());
+		CDF.printCDF(delta, Constants.LOG_DIR + "skewDeltaCDF.csv");
+	}
 
 	/**
 	 * @param args
 	 */
 	public static void main(String[] args) throws IOException {
-		IntersectParser self = new IntersectParser("logs/activeOut.txt");
-		System.out.println("learned from " + self.advancingNodesByReporting.size() + " active nodes " + self.advancingInverted.size());
-		self.getTimeStampStats();
-		self.writeNumberCDF(self.advancingInverted, "logs/active-fullCDF.csv");
+//		IntersectParser self = new IntersectParser("logs/activeOut.txt");
+//		System.out.println("learned from " + self.advancingNodesByReporting.size() + " active nodes "
+//				+ self.advancingInverted.size());
+//		self.getTimeStampStats();
+//		self.writeNumberCDF(self.advancingInverted, "logs/active-fullCDF.csv");
+		IntersectParser.parseTimeSkew();
 	}
 
 }
