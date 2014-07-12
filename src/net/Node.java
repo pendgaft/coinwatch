@@ -14,7 +14,10 @@ public class Node {
 
 	private Contact parent;
 
-	private int connectionState;
+	private boolean outVersion;
+	private boolean incVersion;
+	private boolean incVerAck;
+
 	private String pongNonce;
 	private String currentErrorMsg;
 
@@ -33,7 +36,10 @@ public class Node {
 	public Node(Contact parentContact) {
 		this.parent = parentContact;
 
-		this.connectionState = 0;
+		this.outVersion = false;
+		this.incVersion = false;
+		this.incVerAck = false;
+
 		this.pongNonce = null;
 		this.currentErrorMsg = null;
 
@@ -53,8 +59,12 @@ public class Node {
 	public Node(Socket incSocket) throws IOException {
 		this.parent = null;
 
-		this.connectionState = 0;
+		this.outVersion = false;
+		this.incVersion = false;
+		this.incVerAck = false;
+
 		this.currentErrorMsg = null;
+		this.pongNonce = null;
 
 		this.nodeSocket = incSocket;
 		this.iStream = this.nodeSocket.getInputStream();
@@ -106,14 +116,22 @@ public class Node {
 	public int hashCode() {
 		return this.parent.hashCode();
 	}
-	
-	public boolean equals(Object rhs){
-		Node rhsNode = (Node)rhs;
+
+	public boolean equals(Object rhs) {
+		Node rhsNode = (Node) rhs;
 		return rhsNode.getContactObject().equals(this.getContactObject());
 	}
 
 	public boolean thinksConnected() {
-		return this.connectionState == 15;
+		return this.outVersion && this.incVersion && this.incVerAck;
+	}
+
+	private void resetConnectionStatus() {
+		synchronized (this) {
+			this.outVersion = false;
+			this.incVersion = false;
+			this.incVerAck = false;
+		}
 	}
 
 	private void updateErrorStatus(String incError) {
@@ -202,8 +220,10 @@ public class Node {
 			}
 			return false;
 		}
-		this.parent.updateTimeStamp(((long)Math.floor(System.currentTimeMillis() / 1000)), false);
-		this.connectionState += 1;
+		this.parent.updateTimeStamp(((long) Math.floor(System.currentTimeMillis() / 1000)), false);
+		synchronized (this) {
+			this.outVersion = true;
+		}
 
 		boolean waitResult = false;
 		try {
@@ -293,7 +313,6 @@ public class Node {
 
 	public void recievedVersion(Version incVerMsg) {
 
-		this.connectionState += 4;
 		this.remoteVersionMessage = incVerMsg;
 
 		VerAck verAckPacket = new VerAck();
@@ -304,12 +323,16 @@ public class Node {
 			e.printStackTrace();
 		}
 
-		this.connectionState += 8;
+		synchronized (this) {
+			this.incVersion = true;
+		}
 		this.releaseIfInTransaction(Constants.CONNECT_TX);
 	}
 
 	public void recievedVerAck() {
-		this.connectionState += 2;
+		synchronized (this) {
+			this.incVerAck = true;
+		}
 		this.releaseIfInTransaction(Constants.CONNECT_TX);
 	}
 
@@ -351,7 +374,7 @@ public class Node {
 	public void shutdownNode(String errorMessage) {
 		this.updateErrorStatus(errorMessage);
 
-		this.connectionState = 0;
+		this.resetConnectionStatus();
 		try {
 			this.nodeSocket.close();
 		} catch (IOException e) {
