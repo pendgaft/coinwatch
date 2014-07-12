@@ -36,7 +36,7 @@ public class IntersectionExperiment {
 	 * online)
 	 */
 	private HashMap<Node, Set<Contact>> advancingNodes;
-	
+
 	private HashMap<Node, Long> timeSkewFix;
 
 	private List<Double> advancingWindowList;
@@ -46,6 +46,7 @@ public class IntersectionExperiment {
 
 	private ConnectionExperiment connTester;
 	private HarvestExperiment harvester;
+	private PingTester pinger;
 	private ZmapSupplicant zmapper;
 	private Contact selfContact;
 
@@ -66,6 +67,7 @@ public class IntersectionExperiment {
 
 		this.connTester = new ConnectionExperiment(false);
 		this.harvester = new HarvestExperiment(false);
+		this.pinger = new PingTester();
 		this.zmapper = new ZmapSupplicant();
 		this.selfContact = new Contact(InetAddress.getLocalHost(), Constants.DEFAULT_PORT);
 
@@ -136,7 +138,9 @@ public class IntersectionExperiment {
 	}
 
 	private void testNodes() {
-		// TODO ping nodes, move dead nodes out
+		Set<Node> failedNodes = this.pinger.runNodeTest(this.activeConnections);
+		this.historicalNodes.addAll(failedNodes);
+		this.activeConnections.removeAll(failedNodes);
 	}
 
 	private void harvest() {
@@ -165,9 +169,9 @@ public class IntersectionExperiment {
 					advanceSet.add(tContact);
 					timeMap.put(tContact, tContact.getLastSeen());
 				}
-				
-				if(tContact.equals(this.selfContact)){
-					if(!this.timeSkewFix.containsKey(tNode)){
+
+				if (tContact.equals(this.selfContact)) {
+					if (!this.timeSkewFix.containsKey(tNode)) {
 						this.timeSkewFix.put(tNode, tContact.getLastSeen());
 					}
 				}
@@ -213,25 +217,25 @@ public class IntersectionExperiment {
 			e.printStackTrace();
 		}
 	}
-	
-	private void printOtherStats(){
-		try{
+
+	private void printOtherStats() {
+		try {
 			CDF.printCDF(this.advancingWindowList, Constants.LOG_DIR + "advWindowCDF.csv");
-		} catch(IOException e){
+		} catch (IOException e) {
 			e.printStackTrace();
 		}
 	}
-	
-	private void printTimeSkewTest(){
-		try{
+
+	private void printTimeSkewTest() {
+		try {
 			BufferedWriter outBuff = new BufferedWriter(new FileWriter(Constants.LOG_DIR + "timeSkewTest.csv"));
-			
-			for(Node tNode: this.activeConnections){
+
+			for (Node tNode : this.activeConnections) {
 				outBuff.write(tNode.getContactObject().getLoggingString() + "," + this.timeSkewFix.get(tNode) + "\n");
 			}
-			
+
 			outBuff.close();
-		} catch(IOException e){
+		} catch (IOException e) {
 			e.printStackTrace();
 		}
 	}
@@ -244,10 +248,10 @@ public class IntersectionExperiment {
 		IntersectionExperiment self = new IntersectionExperiment();
 		self.refresh();
 		self.refresh();
-//		for (int counter = 0; counter < 6; counter++) {
-//			Thread.sleep(IntersectionExperiment.SAMPLE_INTERVAL);
-//			self.refresh();
-//		}
+		// for (int counter = 0; counter < 6; counter++) {
+		// Thread.sleep(IntersectionExperiment.SAMPLE_INTERVAL);
+		// self.refresh();
+		// }
 		self.printAllLearnedNodes();
 		self.printAllActiveNodes();
 		self.printOtherStats();
