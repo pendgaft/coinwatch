@@ -8,13 +8,14 @@ import java.util.*;
 import scijava.stats.CDF;
 
 import logging.LogHelper;
-
 import zmap.ZmapSupplicant;
 import net.Constants;
 import net.Node;
 import data.Contact;
+import experiment.threading.DNSUser;
+import experiment.threading.DNSRefreshThread;
 
-public class IntersectionExperiment {
+public class IntersectionExperiment implements DNSUser {
 
 	/**
 	 * Map that stores all the nodes we learn about. The map is keyed by the
@@ -43,6 +44,8 @@ public class IntersectionExperiment {
 	private List<Double> advancingWindowList;
 
 	private HashSet<Node> activeConnections;
+	private HashSet<Node> newConnectionHoldingPen;
+
 	private HashSet<Contact> activeContacts;
 	private HashSet<Contact> historicalContacts;
 	// TODO periodically clear bellow so we try people once in a while
@@ -68,6 +71,8 @@ public class IntersectionExperiment {
 		this.timeSkewFix = new HashMap<Node, Long>();
 
 		this.activeConnections = new HashSet<Node>();
+		this.newConnectionHoldingPen = new HashSet<Node>();
+
 		this.activeContacts = new HashSet<Contact>();
 		this.historicalContacts = new HashSet<Contact>();
 		this.bootstrapConsideredContacts = new HashSet<Contact>();
@@ -82,20 +87,48 @@ public class IntersectionExperiment {
 		 * Start off by fetching peers, after that do a pair of refreshes, that
 		 * should give us knowledge about roughly all the nodes
 		 */
-		this.dnsPoll();
+		this.dnsRefresh();
 		this.refresh();
 		this.refresh();
+
+		/*
+		 * Now that we're ready to go start up the DNS refresher thread
+		 */
+		DNSRefreshThread dnsRefresh = new DNSRefreshThread(this);
+		Thread dnsThread = new Thread(dnsRefresh);
+		dnsThread.setDaemon(true);
+		dnsThread.setName("DNS Refresh Thread");
+		dnsThread.start();
 	}
 
 	private void refresh() {
+
 		/*
-		 * Make sure connected nodes are alive, attempt to maximize connected
-		 * nodes by trying to reconnect, then ask all connected nodes for all
-		 * nodes they know about
+		 * Pull any new nodes we've connected to into our sample set
 		 */
-		this.testNodes();
-		this.boostrap(historicalContacts);
+		this.integrateNewNodes();
+
+		/*
+		 * Harvest information from nodes we're connected to
+		 */
 		this.harvest();
+
+		/*
+		 * Test failed connections, then try to reconnect to anyone we lost
+		 * connection to
+		 */
+		// TODO ensure failed nodes actually have their TCP connections closed
+		// as a result of failure both here and in harvest
+		this.testNodes();
+		
+		/*
+		 * Take a snapshot of historical nodes, and then try to reconnect to them
+		 */
+		HashSet<Contact> historicalSnapshot = new HashSet<Contact>();
+		synchronized(this.historicalContacts){
+			historicalSnapshot.addAll(this.historicalContacts);
+		}
+		this.boostrap(historicalSnapshot);
 	}
 
 	private void testNodes() {
@@ -110,9 +143,13 @@ public class IntersectionExperiment {
 		/*
 		 * Update data structures
 		 */
-		this.historicalContacts.addAll(failedContacts);
+		synchronized (this.historicalContacts) {
+			this.historicalContacts.addAll(failedContacts);
+		}
 		this.activeConnections.removeAll(failedNodes);
-		this.activeContacts.removeAll(failedContacts);
+		synchronized (this.activeContacts) {
+			this.activeContacts.removeAll(failedContacts);
+		}
 	}
 
 	public void boostrap(Set<Contact> testContacts) {
@@ -121,14 +158,19 @@ public class IntersectionExperiment {
 		 * First off, update all contacts in the test set as having been seen by
 		 * the bootstrap function
 		 */
-		this.bootstrapConsideredContacts.addAll(testContacts);
+		synchronized (this.bootstrapConsideredContacts) {
+			testContacts.removeAll(this.bootstrapConsideredContacts);
+			this.bootstrapConsideredContacts.addAll(testContacts);
+		}
 
 		/*
 		 * Remove anyone we currently have a connection going with, because
 		 * trying to start a second is a waste of time at best, and broken at
 		 * worst as we would have two connections to them
 		 */
-		testContacts.removeAll(this.activeContacts);
+		synchronized (this.activeContacts) {
+			testContacts.removeAll(this.activeContacts);
+		}
 
 		/*
 		 * If we have more than 500 contacts to try, get some help from zmap to
@@ -137,33 +179,44 @@ public class IntersectionExperiment {
 		 */
 		// TODO handle clients that don't use default 8333 (small number)
 		if (testContacts.size() > 500) {
-			try {
-				testContacts = this.zmapper.checkAddresses(testContacts);
-			} catch (IOException e) {
-				e.printStackTrace();
+			synchronized (this.zmapper) {
+				try {
+					testContacts = this.zmapper.checkAddresses(testContacts);
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
 			}
 		}
 
 		/*
 		 * Run the contacts through the testing grinder
 		 */
-		this.connTester.pushNodesToTest(testContacts);
-		try {
-			this.connTester.run();
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-			System.exit(-1);
+		Set<Node> newNodes = null;
+		synchronized (this.connTester) {
+			this.connTester.pushNodesToTest(testContacts);
+			try {
+				this.connTester.run();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+				System.exit(-1);
+			}
+			newNodes = this.connTester.getReachableNodes();
 		}
 
 		/*
 		 * Update our node storage, along with our contact bookkeeping; adding
 		 * all of the new nodes
 		 */
-		Set<Node> newNodes = this.connTester.getReachableNodes();
 		Set<Contact> newContacts = this.getContactsForNodeSet(newNodes);
-		this.activeConnections.addAll(newNodes);
-		this.activeContacts.addAll(newContacts);
-		this.historicalContacts.removeAll(newContacts);
+		synchronized(this.newConnectionHoldingPen){
+			this.newConnectionHoldingPen.addAll(newNodes);
+		}
+		synchronized (this.activeContacts) {
+			this.activeContacts.addAll(newContacts);
+		}
+		synchronized (this.historicalContacts) {
+			this.historicalContacts.removeAll(newContacts);
+		}
 
 		/*
 		 * Setup clean data structures for newly connected nodes
@@ -202,12 +255,11 @@ public class IntersectionExperiment {
 
 			for (Contact tContact : harvestedNodes) {
 				/*
-				 * If we've not tried to bootstrap to this guy in recent memory,
-				 * please try
+				 * Add all learned contacts to first time contacts, we'll clear
+				 * it out later in the method, done so we only have to acquire
+				 * the lock on bootstrap considered contacts once
 				 */
-				if (!this.bootstrapConsideredContacts.contains(tContact)) {
-					firstTimeContacts.add(tContact);
-				}
+				firstTimeContacts.add(tContact);
 
 				/*
 				 * If we don't have a past time for this guy from this node, add
@@ -245,11 +297,20 @@ public class IntersectionExperiment {
 		/*
 		 * Try to connect to nodes we've never seen before, who knows...
 		 */
+		synchronized (this.bootstrapConsideredContacts) {
+			firstTimeContacts.removeAll(this.bootstrapConsideredContacts);
+		}
 		this.boostrap(firstTimeContacts);
 	}
 
-	// TODO call me every 60 secs
-	private void dnsPoll() {
+	private void integrateNewNodes() {
+		synchronized (this.newConnectionHoldingPen) {
+			this.activeConnections.addAll(this.newConnectionHoldingPen);
+			this.newConnectionHoldingPen.clear();
+		}
+	}
+
+	public void dnsRefresh() {
 		Set<Contact> dnsNodes = ConnectionExperiment.dnsBootStrap();
 		this.boostrap(dnsNodes);
 	}
