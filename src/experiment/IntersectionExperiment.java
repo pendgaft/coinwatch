@@ -20,6 +20,7 @@ public class IntersectionExperiment {
 	 * Map that stores all the nodes we learn about. The map is keyed by the
 	 * node in question, and maps to the set of all nodes that know about it.
 	 */
+	// FIXME this isn't updated anymore, do we need this?
 	private HashMap<Contact, Set<Contact>> contactToConnected;
 
 	/**
@@ -42,7 +43,10 @@ public class IntersectionExperiment {
 	private List<Double> advancingWindowList;
 
 	private HashSet<Node> activeConnections;
-	private HashSet<Node> historicalNodes;
+	private HashSet<Contact> activeContacts;
+	private HashSet<Contact> historicalContacts;
+	// TODO periodically clear bellow so we try people once in a while
+	private HashSet<Contact> bootstrapConsideredContacts;
 
 	private ConnectionExperiment connTester;
 	private HarvestExperiment harvester;
@@ -50,7 +54,8 @@ public class IntersectionExperiment {
 	private ZmapSupplicant zmapper;
 	private Contact selfContact;
 
-	private static final long SAMPLE_INTERVAL = 300000;
+	private static final long INTER_SAMPLE_TIME = 300000;
+	private static final int SAMPLE_COUNT = 10;
 
 	public IntersectionExperiment() throws InterruptedException, UnknownHostException {
 		Constants.initConstants();
@@ -63,7 +68,9 @@ public class IntersectionExperiment {
 		this.timeSkewFix = new HashMap<Node, Long>();
 
 		this.activeConnections = new HashSet<Node>();
-		this.historicalNodes = new HashSet<Node>();
+		this.activeContacts = new HashSet<Contact>();
+		this.historicalContacts = new HashSet<Contact>();
+		this.bootstrapConsideredContacts = new HashSet<Contact>();
 
 		this.connTester = new ConnectionExperiment(false);
 		this.harvester = new HarvestExperiment(false);
@@ -71,92 +78,143 @@ public class IntersectionExperiment {
 		this.zmapper = new ZmapSupplicant();
 		this.selfContact = new Contact(InetAddress.getLocalHost(), Constants.DEFAULT_PORT);
 
-		Set<Contact> dnsNodes = ConnectionExperiment.dnsBootStrap();
-		this.boostrap(dnsNodes);
+		/*
+		 * Start off by fetching peers, after that do a pair of refreshes, that
+		 * should give us knowledge about roughly all the nodes
+		 */
+		this.dnsPoll();
+		this.refresh();
+		this.refresh();
 	}
 
-	public void boostrap(Set<Contact> testNodes) {
-		this.connTester.pushNodesToTest(testNodes);
+	private void refresh() {
+		/*
+		 * Make sure connected nodes are alive, attempt to maximize connected
+		 * nodes by trying to reconnect, then ask all connected nodes for all
+		 * nodes they know about
+		 */
+		this.testNodes();
+		this.boostrap(historicalContacts);
+		this.harvest();
+	}
+
+	private void testNodes() {
+		/*
+		 * Run pings to every active node, extract failures
+		 */
+		// TODO fix pinger logic so it weights till all nodes are done before
+		// checking for fail
+		Set<Node> failedNodes = this.pinger.runNodeTest(this.activeConnections);
+		Set<Contact> failedContacts = this.getContactsForNodeSet(failedNodes);
+
+		/*
+		 * Update data structures
+		 */
+		this.historicalContacts.addAll(failedContacts);
+		this.activeConnections.removeAll(failedNodes);
+		this.activeContacts.removeAll(failedContacts);
+	}
+
+	public void boostrap(Set<Contact> testContacts) {
+
+		/*
+		 * First off, update all contacts in the test set as having been seen by
+		 * the bootstrap function
+		 */
+		this.bootstrapConsideredContacts.addAll(testContacts);
+
+		/*
+		 * Remove anyone we currently have a connection going with, because
+		 * trying to start a second is a waste of time at best, and broken at
+		 * worst as we would have two connections to them
+		 */
+		testContacts.removeAll(this.activeContacts);
+
+		/*
+		 * If we have more than 500 contacts to try, get some help from zmap to
+		 * prune down the number of connections we're trying, by only trying to
+		 * connect to those that send SYNs on 8333
+		 */
+		// TODO handle clients that don't use default 8333 (small number)
+		if (testContacts.size() > 500) {
+			try {
+				testContacts = this.zmapper.checkAddresses(testContacts);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+
+		/*
+		 * Run the contacts through the testing grinder
+		 */
+		this.connTester.pushNodesToTest(testContacts);
 		try {
 			this.connTester.run();
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 			System.exit(-1);
 		}
-		this.activeConnections.addAll(this.connTester.getReachableNodes());
-
-		for (Node tNode : this.activeConnections) {
-			if (!this.advancingNodes.containsKey(tNode)) {
-				this.advancingNodes.put(tNode, new HashSet<Contact>());
-				this.lastActivityMap.put(tNode, new HashMap<Contact, Long>());
-			}
-		}
 
 		/*
-		 * XXX This code works our really gross because there are multiple
-		 * contact objects floating around for a single contact, work to fix
-		 * that in the future?
+		 * Update our node storage, along with our contact bookkeeping; adding
+		 * all of the new nodes
 		 */
-		for (Contact tCon : this.contactToConnected.keySet()) {
-			for (Node tNode : this.activeConnections) {
-				if (tNode.getContactObject().equals(tCon)) {
-					tCon.setLastSeenDirect(true);
-				}
-			}
-		}
-	}
+		Set<Node> newNodes = this.connTester.getReachableNodes();
+		Set<Contact> newContacts = this.getContactsForNodeSet(newNodes);
+		this.activeConnections.addAll(newNodes);
+		this.activeContacts.addAll(newContacts);
+		this.historicalContacts.removeAll(newContacts);
 
-	private void refresh() {
 		/*
-		 * Make sure connected nodes are alive, ask them for nodes they know
-		 * about
+		 * Setup clean data structures for newly connected nodes
 		 */
-		this.testNodes();
-		this.harvest();
-
-		Set<Contact> newNodes = new HashSet<Contact>();
-		for (Node tNode : this.activeConnections) {
-			Set<Contact> knownNodes = tNode.getContacts();
-
-			for (Contact tContact : knownNodes) {
-				if (!this.contactToConnected.containsKey(tContact)) {
-					this.contactToConnected.put(tContact, new HashSet<Contact>());
-					newNodes.add(tContact);
-				}
-				this.contactToConnected.get(tContact).add(tNode.getContactObject());
-			}
+		for (Node tNode : newNodes) {
+			this.advancingNodes.put(tNode, new HashSet<Contact>());
+			this.lastActivityMap.put(tNode, new HashMap<Contact, Long>());
 		}
-
-		if (newNodes.size() > 500) {
-			try {
-				newNodes = this.zmapper.checkAddresses(newNodes);
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
-		this.boostrap(newNodes);
-	}
-
-	private void testNodes() {
-		Set<Node> failedNodes = this.pinger.runNodeTest(this.activeConnections);
-		this.historicalNodes.addAll(failedNodes);
-		this.activeConnections.removeAll(failedNodes);
 	}
 
 	private void harvest() {
+
+		/*
+		 * Obvious first step, push currently connected nodes to the harvester
+		 * machinery
+		 */
 		this.harvester.pushNodesToTest(this.activeConnections);
 		try {
+			// TODO fix harvest logic so we reset after harvest, not before
+			// (don't lose unsolicited acks)
 			this.harvester.run(false);
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 			System.exit(-1);
 		}
 
+		/*
+		 * Process all the new contact info we pull, searching for nodes we've
+		 * never heard of, and updating who we think is online/active
+		 */
+		Set<Contact> firstTimeContacts = new HashSet<Contact>();
 		for (Node tNode : this.activeConnections) {
 			Set<Contact> harvestedNodes = tNode.getContacts();
 			HashMap<Contact, Long> timeMap = this.lastActivityMap.get(tNode);
 			Set<Contact> advanceSet = this.advancingNodes.get(tNode);
+
 			for (Contact tContact : harvestedNodes) {
+				/*
+				 * If we've not tried to bootstrap to this guy in recent memory,
+				 * please try
+				 */
+				if (!this.bootstrapConsideredContacts.contains(tContact)) {
+					firstTimeContacts.add(tContact);
+				}
+
+				/*
+				 * If we don't have a past time for this guy from this node, add
+				 * it in, if the time for this guy has moved forward, then this
+				 * node has seen activity, record it, as that's what we're
+				 * looking for after all
+				 */
 				if (!timeMap.containsKey(tContact)) {
 					timeMap.put(tContact, tContact.getLastSeen());
 				} else if (tContact.getLastSeen() > timeMap.get(tContact)) {
@@ -170,6 +228,12 @@ public class IntersectionExperiment {
 					timeMap.put(tContact, tContact.getLastSeen());
 				}
 
+				/*
+				 * Try to record the remote node's view of our last time, helps
+				 * us figure out any clock skew
+				 */
+				// TODO record the last time we send a message that would move
+				// last update forward, don't forget the whole 20 min thing...
 				if (tContact.equals(this.selfContact)) {
 					if (!this.timeSkewFix.containsKey(tNode)) {
 						this.timeSkewFix.put(tNode, tContact.getLastSeen());
@@ -177,6 +241,32 @@ public class IntersectionExperiment {
 				}
 			}
 		}
+
+		/*
+		 * Try to connect to nodes we've never seen before, who knows...
+		 */
+		this.boostrap(firstTimeContacts);
+	}
+
+	// TODO call me every 60 secs
+	private void dnsPoll() {
+		Set<Contact> dnsNodes = ConnectionExperiment.dnsBootStrap();
+		this.boostrap(dnsNodes);
+	}
+
+	/**
+	 * Helper function to build a set of contacts from a set of node objects,
+	 * meerly builds a set of their parent objects.
+	 * 
+	 * @param nodeSet
+	 * @return
+	 */
+	private Set<Contact> getContactsForNodeSet(Set<Node> nodeSet) {
+		Set<Contact> retSet = new HashSet<Contact>();
+		for (Node tNode : nodeSet) {
+			retSet.add(tNode.getContactObject());
+		}
+		return retSet;
 	}
 
 	private void printAllLearnedNodes() {
@@ -245,17 +335,26 @@ public class IntersectionExperiment {
 	 * @throws InterruptedException
 	 */
 	public static void main(String[] args) throws InterruptedException, UnknownHostException {
+		/*
+		 * Initialize experimental machines
+		 */
 		IntersectionExperiment self = new IntersectionExperiment();
-		self.refresh();
-		self.refresh();
-		// for (int counter = 0; counter < 6; counter++) {
-		// Thread.sleep(IntersectionExperiment.SAMPLE_INTERVAL);
-		// self.refresh();
-		// }
-		self.printAllLearnedNodes();
-		self.printAllActiveNodes();
-		self.printOtherStats();
-		self.printTimeSkewTest();
+
+		/*
+		 * Run a number of rounds, attempt to take a sample no more often than
+		 * once every sample window, if the last sample took longer, then
+		 * samples are done back to back
+		 */
+		for (int counter = 0; counter < IntersectionExperiment.SAMPLE_COUNT; counter++) {
+			long startTime = System.currentTimeMillis();
+			self.refresh();
+			long delta = System.currentTimeMillis() - startTime;
+
+			if (delta < IntersectionExperiment.INTER_SAMPLE_TIME) {
+				Thread.sleep(IntersectionExperiment.INTER_SAMPLE_TIME - delta);
+			}
+		}
+
 	}
 
 }
