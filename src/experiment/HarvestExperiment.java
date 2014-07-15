@@ -1,6 +1,5 @@
 package experiment;
 
-import java.text.SimpleDateFormat;
 import java.util.*;
 import java.io.*;
 import java.util.logging.*;
