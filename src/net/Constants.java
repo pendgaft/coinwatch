@@ -13,6 +13,7 @@ public class Constants {
 	public static final TimeUnit CONNECT_TIMEOUT_UNIT = TimeUnit.MILLISECONDS;
 	public static final long TRANSACTION_TIMEOUT = 15000;
 	public static final TimeUnit TRANSACTION_TIMEOUT_UNIT = TimeUnit.MILLISECONDS;
+	public static final boolean STRICT_TIMEOUTS = true;
 
 	public static final int MAX_ADDR_ADV = 1000;
 

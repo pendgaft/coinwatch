@@ -12,8 +12,14 @@ import data.Contact;
 //TODO logger for exceptions, just so we can look at them and sanity check
 public class Node {
 
+	/**
+	 * Contact information for this peer
+	 */
 	private Contact parent;
 
+	/**
+	 * Connection state information
+	 */
 	private boolean outVersion;
 	private boolean incVersion;
 	private boolean incVerAck;
@@ -21,6 +27,9 @@ public class Node {
 	private String pongNonce;
 	private String currentErrorMsg;
 
+	/**
+	 * Network information
+	 */
 	private Socket nodeSocket;
 	private InputStream iStream;
 	private OutputStream oStream;
@@ -29,6 +38,9 @@ public class Node {
 	private Version remoteVersionMessage;
 	private HashSet<Contact> learnedContacts;
 
+	/**
+	 * Transaction variables
+	 */
 	private Semaphore transactionLine;
 	private String currentTransaction;
 	private Semaphore transactionFlag;
@@ -242,7 +254,7 @@ public class Node {
 		/*
 		 * evaluate if the try acquire succeeded
 		 */
-		if (!waitResult) {
+		if (Constants.STRICT_TIMEOUTS && !waitResult) {
 			this.updateErrorStatus("Timed out waiting for version/verack handshake");
 			try {
 				this.nodeSocket.close();
@@ -294,7 +306,10 @@ public class Node {
 		}
 		this.endTransaction();
 
-		if (waitSuccess) {
+		if (Constants.STRICT_TIMEOUTS && !waitSuccess) {
+			this.shutdownNode("Timeout waiting for ping reply");
+			return false;
+		} else {
 			if (this.pongNonce != null) {
 				boolean result = this.pongNonce.equals(nonceToSee);
 				if (!result) {
@@ -305,9 +320,6 @@ public class Node {
 				this.shutdownNode("Ping reply still null (shouldn't get here...).");
 				return false;
 			}
-		} else {
-			this.shutdownNode("Timeout waiting for ping reply");
-			return false;
 		}
 	}
 
