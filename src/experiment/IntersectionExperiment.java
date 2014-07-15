@@ -235,8 +235,6 @@ public class IntersectionExperiment implements DNSUser {
 		 */
 		this.harvester.pushNodesToTest(this.activeConnections);
 		try {
-			// TODO fix harvest logic so we reset after harvest, not before
-			// (don't lose unsolicited acks)
 			this.harvester.run(false);
 		} catch (InterruptedException e) {
 			e.printStackTrace();
@@ -395,6 +393,7 @@ public class IntersectionExperiment implements DNSUser {
 	 * @param args
 	 * @throws InterruptedException
 	 */
+	//TODO stopgap logging
 	public static void main(String[] args) throws InterruptedException, UnknownHostException {
 		/*
 		 * Initialize experimental machines

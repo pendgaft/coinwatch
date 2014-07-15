@@ -1,18 +1,15 @@
 package experiment.threading;
 
-import java.util.*;
 import java.util.logging.*;
 
 import net.Constants;
 import net.Node;
-import data.Contact;
 import experiment.ExperimentContainer;
 import experiment.HarvestExperiment;
 
 
 public class HarvestThread implements Runnable {
 
-	//FIXME should prob not reach directly into the guts of another data structure..
 	private ExperimentContainer<Node, Node> parent;
 	private Logger expLog;
 
@@ -26,7 +23,6 @@ public class HarvestThread implements Runnable {
 		try {
 			while (true) {
 				Node nodeToHarvest = this.parent.fetchWork();
-				nodeToHarvest.clearContacts();
 
 				int gain = HarvestExperiment.MIN_GAIN;
 				int counter = 0;
