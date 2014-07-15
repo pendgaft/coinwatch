@@ -353,8 +353,8 @@ public class Node {
 		List<Contact> incContacts = incMessage.getLearnedContacts();
 		synchronized (this.learnedContacts) {
 			/*
-			 * We need to remove the old contact objects first, adding in the
-			 * new ones
+			 * We need to remove the old version of the contact objects first,
+			 * adding in the new ones, this ensures timestamps are up to date
 			 */
 			this.learnedContacts.removeAll(incContacts);
 			this.learnedContacts.addAll(incContacts);
@@ -415,7 +415,9 @@ public class Node {
 	}
 
 	public void clearContacts() {
-		this.learnedContacts.clear();
+		synchronized (this.learnedContacts) {
+			this.learnedContacts.clear();
+		}
 	}
 
 	public Set<Contact> getContacts() {
