@@ -103,6 +103,9 @@ public class IntersectionExperiment implements DNSUser {
 
 	private void refresh() {
 
+		// XXX temp logging
+		long start = System.currentTimeMillis();
+
 		/*
 		 * Pull any new nodes we've connected to into our sample set
 		 */
@@ -120,22 +123,49 @@ public class IntersectionExperiment implements DNSUser {
 		// TODO ensure failed nodes actually have their TCP connections closed
 		// as a result of failure both here and in harvest
 		this.testNodes();
-		
+
 		/*
-		 * Take a snapshot of historical nodes, and then try to reconnect to them
+		 * Take a snapshot of historical nodes, and then try to reconnect to
+		 * them
 		 */
 		HashSet<Contact> historicalSnapshot = new HashSet<Contact>();
-		synchronized(this.historicalContacts){
+		synchronized (this.historicalContacts) {
 			historicalSnapshot.addAll(this.historicalContacts);
 		}
 		this.boostrap(historicalSnapshot);
+
+		// XXX temp logging
+		long runtime = System.currentTimeMillis() - start;
+		System.out.println("*************************************");
+		System.out.println("Run time: " + LogHelper.formatMili(runtime));
+		synchronized (this.activeContacts) {
+			System.out.println("Active connectionss: " + this.activeContacts.size());
+		}
+		synchronized (this.historicalContacts) {
+			System.out.println("Historical connectionss: " + this.historicalContacts.size());
+		}
+		synchronized (this.bootstrapConsideredContacts) {
+			System.out.println("Known contacts: " + this.bootstrapConsideredContacts.size());
+		}
+
+		HashSet<Contact> allActiveContacts = new HashSet<Contact>();
+		int usefulConnections = 0;
+		for (Set<Contact> tSet : this.advancingNodes.values()) {
+			allActiveContacts.addAll(tSet);
+			if (tSet.size() > 0) {
+				usefulConnections++;
+			}
+		}
+		System.out.println("Active contacts this refresh: " + allActiveContacts.size() + " seen from "
+				+ usefulConnections);
+		System.out.println("*************************************");
 	}
 
 	private void testNodes() {
 		/*
 		 * Run pings to every active node, extract failures
 		 */
-		// TODO fix pinger logic so it weights till all nodes are done before
+		// TODO fix pinger logic so it waits till all nodes are done before
 		// checking for fail
 		Set<Node> failedNodes = this.pinger.runNodeTest(this.activeConnections);
 		Set<Contact> failedContacts = this.getContactsForNodeSet(failedNodes);
@@ -208,7 +238,7 @@ public class IntersectionExperiment implements DNSUser {
 		 * all of the new nodes
 		 */
 		Set<Contact> newContacts = this.getContactsForNodeSet(newNodes);
-		synchronized(this.newConnectionHoldingPen){
+		synchronized (this.newConnectionHoldingPen) {
 			this.newConnectionHoldingPen.addAll(newNodes);
 		}
 		synchronized (this.activeContacts) {
@@ -292,12 +322,6 @@ public class IntersectionExperiment implements DNSUser {
 			}
 		}
 
-		/*
-		 * Try to connect to nodes we've never seen before, who knows...
-		 */
-		synchronized (this.bootstrapConsideredContacts) {
-			firstTimeContacts.removeAll(this.bootstrapConsideredContacts);
-		}
 		this.boostrap(firstTimeContacts);
 	}
 
@@ -393,7 +417,7 @@ public class IntersectionExperiment implements DNSUser {
 	 * @param args
 	 * @throws InterruptedException
 	 */
-	//TODO stopgap logging
+	// TODO stopgap logging
 	public static void main(String[] args) throws InterruptedException, UnknownHostException {
 		/*
 		 * Initialize experimental machines
