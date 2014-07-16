@@ -8,24 +8,28 @@ import java.util.concurrent.*;
 import message.*;
 import data.Contact;
 
-//TODO better error handling
 //TODO logger for exceptions, just so we can look at them and sanity check
+//TODO seems like we should NEVER recycle one of these objects (transactions for example), make them "one shot"
 public class Node {
 
-	/**
+	/*
 	 * Contact information for this peer
 	 */
 	private Contact parent;
 
-	/**
+	/*
 	 * Connection state information
 	 */
 	private boolean outVersion;
 	private boolean incVersion;
 	private boolean incVerAck;
 
+	/*
+	 * Ping and pong information
+	 */
 	private String pingNonce;
 	private String pongNonce;
+
 	private String currentErrorMsg;
 
 	/**
@@ -38,6 +42,7 @@ public class Node {
 
 	private Version remoteVersionMessage;
 	private HashSet<Contact> learnedContacts;
+	private long lastTSMovingMessage;
 
 	/**
 	 * Transaction variables
@@ -63,6 +68,7 @@ public class Node {
 		this.listenerThread = null;
 
 		this.remoteVersionMessage = null;
+		this.lastTSMovingMessage = 0;
 		this.learnedContacts = new HashSet<Contact>();
 
 		this.transactionFlag = new Semaphore(0);
@@ -87,6 +93,7 @@ public class Node {
 		this.listenerThread = null;
 
 		this.remoteVersionMessage = null;
+		this.lastTSMovingMessage = 0;
 		this.learnedContacts = new HashSet<Contact>();
 
 		this.transactionFlag = new Semaphore(0);
@@ -132,12 +139,20 @@ public class Node {
 	}
 
 	public boolean equals(Object rhs) {
+		if (!(rhs instanceof Node)) {
+			return false;
+		}
+
 		Node rhsNode = (Node) rhs;
 		return rhsNode.getContactObject().equals(this.getContactObject());
 	}
 
 	public boolean thinksConnected() {
-		return this.outVersion && this.incVersion && this.incVerAck;
+		boolean result = false;
+		synchronized (this) {
+			result = this.outVersion && this.incVersion && this.incVerAck;
+		}
+		return result;
 	}
 
 	private void resetConnectionStatus() {
@@ -167,6 +182,19 @@ public class Node {
 		}
 
 		return errFetch;
+	}
+
+	private void sentTSAdvancingMessage() {
+		long time = ((long) Math.floor(System.currentTimeMillis() / 1000));
+		synchronized (this) {
+			/*
+			 * Check if the window would advance, don't forget that bitcoind
+			 * will only advance once every 20 minutes
+			 */
+			if ((this.lastTSMovingMessage + 20 * 60) <= time) {
+				this.lastTSMovingMessage = time;
+			}
+		}
 	}
 
 	public boolean connect() {
@@ -226,15 +254,10 @@ public class Node {
 			this.oStream.write(versionPacket.getBytes());
 			this.oStream.flush();
 		} catch (IOException e1) {
-			this.updateErrorStatus("I/O exception writing version packet");
-			try {
-				this.nodeSocket.close();
-			} catch (IOException e2) {
-				// Can be caught silently, we're already dying
-			}
+			this.shutdownNode("I/O exception writing version packet");
 			return false;
 		}
-		this.parent.updateTimeStamp(((long) Math.floor(System.currentTimeMillis() / 1000)), false);
+		this.sentTSAdvancingMessage();
 		synchronized (this) {
 			this.outVersion = true;
 		}
@@ -243,12 +266,7 @@ public class Node {
 		try {
 			waitResult = this.transactionFlag.tryAcquire(2, Constants.CONNECT_TIMEOUT, Constants.CONNECT_TIMEOUT_UNIT);
 		} catch (InterruptedException e) {
-			this.updateErrorStatus("Interupted waiting for version handshake.");
-			try {
-				this.nodeSocket.close();
-			} catch (IOException e2) {
-				// Can be caught silently, we're already dying
-			}
+			this.shutdownNode("Interupted waiting for version handshake.");
 			return false;
 		}
 		this.endTransaction();
@@ -257,12 +275,7 @@ public class Node {
 		 * evaluate if the try acquire succeeded
 		 */
 		if (Constants.STRICT_TIMEOUTS && !waitResult) {
-			this.updateErrorStatus("Timed out waiting for version/verack handshake");
-			try {
-				this.nodeSocket.close();
-			} catch (IOException e2) {
-				// Can be caught silently, we're already dying
-			}
+			this.shutdownNode("Timed out waiting for version/verack handshake");
 		}
 
 		boolean con = this.thinksConnected();
@@ -293,6 +306,11 @@ public class Node {
 		} catch (IOException e) {
 			this.shutdownNode("I/O error writing ping during connection test");
 		}
+
+		/*
+		 * This action can move our timestamp forward at the remote host
+		 */
+		this.sentTSAdvancingMessage();
 	}
 
 	public boolean testPing() {
@@ -328,7 +346,7 @@ public class Node {
 			this.oStream.write(verAckPacket.getBytes());
 			this.oStream.flush();
 		} catch (IOException e) {
-			e.printStackTrace();
+			this.shutdownNode("Error writing verack message.");
 		}
 
 		synchronized (this) {
@@ -406,7 +424,7 @@ public class Node {
 		try {
 			this.transactionFlag.tryAcquire(Constants.TRANSACTION_TIMEOUT, Constants.CONNECT_TIMEOUT_UNIT);
 		} catch (InterruptedException e) {
-			return;
+			//This one we can let slide I think
 		}
 		this.endTransaction();
 	}
