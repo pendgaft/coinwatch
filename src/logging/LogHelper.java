@@ -19,8 +19,7 @@ public class LogHelper {
 		 */
 		FileHandler logHandler = null;
 		FileHandler summaryHandler = null;
-		SimpleDateFormat df = new SimpleDateFormat("yyyy.MM.dd-HH.mm.ss");
-		String tsString = df.format(new Date());
+		String tsString = LogHelper.buildTSString();
 		try {
 
 			logHandler = new FileHandler(Constants.LOG_DIR + "harvest-" + tsString + ".out");
@@ -45,6 +44,12 @@ public class LogHelper {
 		expLogger.addHandler(logHandler);
 		expLogger.addHandler(conHandler);
 		expLogger.addHandler(summaryHandler);
+	}
+	
+	public static String buildTSString(){
+		SimpleDateFormat df = new SimpleDateFormat("yyyy.MM.dd-HH.mm.ss");
+		String tsString = df.format(new Date());
+		return tsString;
 	}
 
 	public static String formatMili(long timeDelta) {
