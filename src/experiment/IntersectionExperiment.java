@@ -340,7 +340,7 @@ public class IntersectionExperiment implements DNSUser {
 
 	private void doRoundLogging() {
 		try {
-			this.logBuffer.write("Network Status at: " + LogHelper.buildTSString());
+			this.logBuffer.write("Network Status at: " + LogHelper.buildTSString() + "\n");
 		} catch (IOException e) {
 			e.printStackTrace();
 			return;
