@@ -24,6 +24,7 @@ public class Node {
 	private boolean incVersion;
 	private boolean incVerAck;
 
+	private String pingNonce;
 	private String pongNonce;
 	private String currentErrorMsg;
 
@@ -52,6 +53,7 @@ public class Node {
 		this.incVersion = false;
 		this.incVerAck = false;
 
+		this.pingNonce = null;
 		this.pongNonce = null;
 		this.currentErrorMsg = null;
 
@@ -270,57 +272,51 @@ public class Node {
 		return con;
 	}
 
-	public boolean testConnectionLiveness() {
-		if (!this.thinksConnected()) {
-			return false;
-		}
-
-		if (!this.initiateTransaction(Constants.PING_TX)) {
-			return false;
-		}
-
+	public void initiatePing() {
+		/*
+		 * Build ping message, do a pinch of setup
+		 */
 		Ping outPing = new Ping();
-		String nonceToSee = outPing.getNonceStr();
+		this.pingNonce = outPing.getNonceStr();
+		synchronized (this) {
+			this.pongNonce = null;
+		}
 
-		this.pongNonce = null;
+		/*
+		 * Write the ping message and this part is done, we don't block here, as
+		 * later code will check with the testPing method after a "reasonable"
+		 * amount of time
+		 */
 		try {
 			this.oStream.write(outPing.getBytes());
 			this.oStream.flush();
 		} catch (IOException e) {
 			this.shutdownNode("I/O error writing ping during connection test");
-			return false;
+		}
+	}
+
+	public boolean testPing() {
+
+		boolean worked = false;
+
+		if (this.pingNonce == null) {
+			throw new RuntimeException("testPing called without a call to initiatePing!");
 		}
 
-		/*
-		 * Block on response, we don't actually need to error here, as we'll
-		 * error during the test beneath
-		 */
-		boolean waitSuccess = false;
-		try {
-			waitSuccess = this.transactionFlag.tryAcquire(Constants.TRANSACTION_TIMEOUT,
-					Constants.TRANSACTION_TIMEOUT_UNIT);
-		} catch (InterruptedException e) {
-			/*
-			 * Deal w/ silently, not a big deal honestly
-			 */
-		}
-		this.endTransaction();
-
-		if (Constants.STRICT_TIMEOUTS && !waitSuccess) {
-			this.shutdownNode("Timeout waiting for ping reply");
-			return false;
-		} else {
+		synchronized (this) {
 			if (this.pongNonce != null) {
-				boolean result = this.pongNonce.equals(nonceToSee);
-				if (!result) {
-					this.shutdownNode("bad ping reply");
-				}
-				return result;
-			} else {
-				this.shutdownNode("Ping reply still null (shouldn't get here...).");
-				return false;
+				worked = this.pongNonce.equals(this.pingNonce);
 			}
+
+			this.pingNonce = null;
+			this.pongNonce = null;
 		}
+
+		if (!worked) {
+			this.shutdownNode("bad ping attempt");
+		}
+
+		return worked;
 	}
 
 	public void recievedVersion(Version incVerMsg) {
@@ -379,8 +375,9 @@ public class Node {
 
 	public void recievedPong(byte[] pongPayload) {
 		Pong incPong = new Pong(pongPayload);
-		this.pongNonce = incPong.getNonceStr();
-		this.releaseIfInTransaction(Constants.PING_TX);
+		synchronized (this) {
+			this.pongNonce = incPong.getNonceStr();
+		}
 	}
 
 	public void shutdownNode(String errorMessage) {

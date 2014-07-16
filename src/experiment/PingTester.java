@@ -5,46 +5,42 @@ import java.util.*;
 import experiment.ExperimentContainer;
 import experiment.threading.PingThread;
 import data.NodeBooleanPair;
+import net.Constants;
 import net.Node;
 
 public class PingTester {
 
-	private static final int TESTER_THREADS = 10;
-
-	private ExperimentContainer<Node, NodeBooleanPair> testContainer;
-
 	public PingTester() {
-		this.testContainer = new ExperimentContainer<Node, NodeBooleanPair>();
 
-		for (int counter = 0; counter < PingTester.TESTER_THREADS; counter++) {
-			PingThread tChild = new PingThread(this.testContainer);
-			Thread tThread = new Thread(tChild);
-			tThread.setDaemon(true);
-			tThread.setName("Ping Worker " + counter);
-			tThread.start();
-		}
 	}
 
-	/**
-	 * Runs a multithreaded test attempting a bitcoin ping to all the nodes,
-	 * returns the nodes that are NOT responsive.
-	 * 
-	 * @param nodesToTest
-	 *            the set of nodes to ping
-	 * @return a set containing all nodes that FAILED to correctly respond
-	 */
 	public Set<Node> runNodeTest(Set<Node> nodesToTest) {
 		Set<Node> workingNodes = new HashSet<Node>();
+		List<Node> testList = new ArrayList<Node>(nodesToTest.size());
 
-		this.testContainer.nodesReadyToWork(nodesToTest);
-		for (int counter = 0; counter < nodesToTest.size(); counter++) {
-			try {
-				NodeBooleanPair result = this.testContainer.fetchCompleted();
-				if (!result.getBoolean()) {
-					workingNodes.add(result.getNode());
-				}
-			} catch (InterruptedException e) {
-				e.printStackTrace();
+		/*
+		 * Send a ping to each node
+		 */
+		for (Node tNode : testList) {
+			tNode.initiatePing();
+		}
+
+		/*
+		 * Wait a "reasonable" amount of time
+		 */
+		try {
+			Thread.sleep(Constants.TRANSACTION_TIMEOUT);
+		} catch (InterruptedException e) {
+			System.err.println("Sleep interrupted in Ping Tester.");
+		}
+
+		/*
+		 * Check for ping replies, this will cause any nodes that fail to shut
+		 * down.
+		 */
+		for (Node tNode : testList) {
+			if (tNode.testPing()) {
+				workingNodes.add(tNode);
 			}
 		}
 
