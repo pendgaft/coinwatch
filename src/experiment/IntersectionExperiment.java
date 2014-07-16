@@ -4,6 +4,8 @@ import java.io.*;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.*;
+import java.util.logging.Logger;
+import java.util.logging.Level;
 
 import scijava.stats.CDF;
 
@@ -57,12 +59,21 @@ public class IntersectionExperiment implements DNSUser {
 	private ZmapSupplicant zmapper;
 	private Contact selfContact;
 
+	private BufferedWriter logBuffer;
+
 	private static final long INTER_SAMPLE_TIME = 300000;
 	private static final int SAMPLE_COUNT = 10;
 
-	public IntersectionExperiment() throws InterruptedException, UnknownHostException {
+	public IntersectionExperiment() throws InterruptedException, UnknownHostException, IOException {
 		Constants.initConstants();
 		LogHelper.initLogger();
+
+		/*
+		 * Turn off the system logger used by other experiments to save disk
+		 * space
+		 */
+		Logger expLogger = Logger.getLogger(Constants.HARVEST_LOG);
+		expLogger.setLevel(Level.SEVERE);
 
 		this.contactToConnected = new HashMap<Contact, Set<Contact>>();
 		this.lastActivityMap = new HashMap<Node, HashMap<Contact, Long>>();
@@ -82,6 +93,8 @@ public class IntersectionExperiment implements DNSUser {
 		this.pinger = new PingTester();
 		this.zmapper = new ZmapSupplicant();
 		this.selfContact = new Contact(InetAddress.getLocalHost(), Constants.DEFAULT_PORT);
+
+		this.logBuffer = new BufferedWriter(new FileWriter(Constants.LOG_DIR + "network-status.log"));
 
 		/*
 		 * Start off by fetching peers, after that do a pair of refreshes, that
@@ -134,31 +147,15 @@ public class IntersectionExperiment implements DNSUser {
 		}
 		this.boostrap(historicalSnapshot);
 
-		// XXX temp logging
+		/*
+		 * Small amount of runtime logging
+		 */
 		long runtime = System.currentTimeMillis() - start;
 		System.out.println("*************************************");
 		System.out.println("Run time: " + LogHelper.formatMili(runtime));
-		synchronized (this.activeContacts) {
-			System.out.println("Active connectionss: " + this.activeContacts.size());
-		}
-		synchronized (this.historicalContacts) {
-			System.out.println("Historical connectionss: " + this.historicalContacts.size());
-		}
-		synchronized (this.bootstrapConsideredContacts) {
-			System.out.println("Known contacts: " + this.bootstrapConsideredContacts.size());
-		}
-
-		HashSet<Contact> allActiveContacts = new HashSet<Contact>();
-		int usefulConnections = 0;
-		for (Set<Contact> tSet : this.advancingNodes.values()) {
-			allActiveContacts.addAll(tSet);
-			if (tSet.size() > 0) {
-				usefulConnections++;
-			}
-		}
-		System.out.println("Active contacts this refresh: " + allActiveContacts.size() + " seen from "
-				+ usefulConnections);
 		System.out.println("*************************************");
+		this.doRoundLogging();
+		this.printNodeJournal();
 	}
 
 	private void testNodes() {
@@ -352,62 +349,86 @@ public class IntersectionExperiment implements DNSUser {
 		return retSet;
 	}
 
-	private void printAllLearnedNodes() {
+	private void doRoundLogging() {
 		try {
-			BufferedWriter logOut = new BufferedWriter(new FileWriter(Constants.LOG_DIR + "learnedOut.txt"));
+			this.logBuffer.write("Network Status at: " + LogHelper.buildTSString());
+		} catch (IOException e) {
+			e.printStackTrace();
+			return;
+		}
 
-			for (Contact tContact : this.contactToConnected.keySet()) {
+		synchronized (this.activeContacts) {
+			try {
+				this.logBuffer.write("Active connectionss: " + this.activeContacts.size() + "\n");
+			} catch (IOException e) {
+				e.printStackTrace();
+				return;
+			}
+		}
+		synchronized (this.historicalContacts) {
+			try {
+				this.logBuffer.write("Historical connectionss: " + this.historicalContacts.size() + "\n");
+			} catch (IOException e) {
+				e.printStackTrace();
+				return;
+			}
+		}
+		synchronized (this.bootstrapConsideredContacts) {
+			try {
+				this.logBuffer.write("Known contacts: " + this.bootstrapConsideredContacts.size() + "\n");
+			} catch (IOException e) {
+				e.printStackTrace();
+				return;
+			}
+		}
 
-				Set<Contact> nodesWhoKnew = this.contactToConnected.get(tContact);
-				logOut.write("Contact " + tContact.getLoggingString() + "," + nodesWhoKnew.size() + "\n");
-				for (Contact tKnowing : nodesWhoKnew) {
-					logOut.write(tKnowing.toString() + "\n");
+		HashSet<Contact> allActiveContacts = new HashSet<Contact>();
+		int usefulConnections = 0;
+		for (Set<Contact> tSet : this.advancingNodes.values()) {
+			allActiveContacts.addAll(tSet);
+			if (tSet.size() > 0) {
+				usefulConnections++;
+			}
+		}
+		try {
+			this.logBuffer.write("Active contacts this refresh: " + allActiveContacts.size() + " seen from "
+					+ usefulConnections + "\n");
+			this.logBuffer.flush();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	private void printNodeJournal() {
+		try {
+			String tsStr = LogHelper.buildTSString();
+			BufferedWriter journalBuffer = new BufferedWriter(
+					new FileWriter(Constants.LOG_DIR + "nodeJournal-" + tsStr));
+
+			for (Node reportingNode : this.advancingNodes.keySet()) {
+				Set<Contact> advancingSet = this.advancingNodes.get(reportingNode);
+				if (advancingSet.size() == 0) {
+					continue;
 				}
-				logOut.write("\n");
-			}
 
-			logOut.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
-
-	private void printAllActiveNodes() {
-		try {
-			BufferedWriter logOut = new BufferedWriter(new FileWriter(Constants.LOG_DIR + "activeOut.txt"));
-
-			for (Node tNode : this.advancingNodes.keySet()) {
-				logOut.write("Contact " + tNode.getContactObject().getLoggingString() + "\n");
-				Set<Contact> advNodes = this.advancingNodes.get(tNode);
-				for (Contact tContact : advNodes) {
-					logOut.write(tContact.getLoggingString() + "\n");
+				journalBuffer.write("R: " + reportingNode.getContactObject().toString() + "\n");
+				for (Contact advancingContact : advancingSet) {
+					journalBuffer.write("A: " + advancingContact.getLoggingString() + "\n");
 				}
-				logOut.write("\n");
 			}
 
-			logOut.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
+			journalBuffer.close();
 
-	private void printOtherStats() {
-		try {
-			CDF.printCDF(this.advancingWindowList, Constants.LOG_DIR + "advWindowCDF.csv");
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
+			BufferedWriter connectionBuffer = new BufferedWriter(new FileWriter(Constants.LOG_DIR
+					+ "connectionJournal-" + tsStr));
 
-	private void printTimeSkewTest() {
-		try {
-			BufferedWriter outBuff = new BufferedWriter(new FileWriter(Constants.LOG_DIR + "timeSkewTest.csv"));
-
-			for (Node tNode : this.activeConnections) {
-				outBuff.write(tNode.getContactObject().getLoggingString() + "," + this.timeSkewFix.get(tNode) + "\n");
+			synchronized (this.activeContacts) {
+				for (Contact connectedPeer : this.activeContacts) {
+					connectionBuffer.write(connectedPeer.toString() + "\n");
+				}
 			}
 
-			outBuff.close();
+			connectionBuffer.close();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -417,8 +438,7 @@ public class IntersectionExperiment implements DNSUser {
 	 * @param args
 	 * @throws InterruptedException
 	 */
-	// TODO stopgap logging
-	public static void main(String[] args) throws InterruptedException, UnknownHostException {
+	public static void main(String[] args) throws InterruptedException, UnknownHostException, IOException {
 		/*
 		 * Initialize experimental machines
 		 */
@@ -434,11 +454,13 @@ public class IntersectionExperiment implements DNSUser {
 			self.refresh();
 			long delta = System.currentTimeMillis() - startTime;
 
-			if (delta < IntersectionExperiment.INTER_SAMPLE_TIME) {
+			if (delta < IntersectionExperiment.INTER_SAMPLE_TIME && counter < IntersectionExperiment.SAMPLE_COUNT - 1) {
 				Thread.sleep(IntersectionExperiment.INTER_SAMPLE_TIME - delta);
 			}
 		}
 
+		// Yeah, poor form reaching inside a data structure like this, sue me...
+		self.logBuffer.close();
 	}
 
 }
