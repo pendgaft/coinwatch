@@ -7,8 +7,6 @@ import java.util.*;
 import java.util.logging.Logger;
 import java.util.logging.Level;
 
-import scijava.stats.CDF;
-
 import logging.LogHelper;
 import zmap.ZmapSupplicant;
 import net.Constants;
@@ -18,13 +16,6 @@ import experiment.threading.DNSUser;
 import experiment.threading.DNSRefreshThread;
 
 public class IntersectionExperiment implements DNSUser {
-
-	/**
-	 * Map that stores all the nodes we learn about. The map is keyed by the
-	 * node in question, and maps to the set of all nodes that know about it.
-	 */
-	// FIXME this isn't updated anymore, do we need this?
-	private HashMap<Contact, Set<Contact>> contactToConnected;
 
 	/**
 	 * Map that stores the time stamps for all known nodes. The map is keyed by
@@ -51,6 +42,8 @@ public class IntersectionExperiment implements DNSUser {
 	private HashSet<Contact> activeContacts;
 	private HashSet<Contact> historicalContacts;
 	// TODO periodically clear bellow so we try people once in a while
+	// TODO better idea....do what we were trying to do (cutdown on work) in a
+	// smart manner
 	private HashSet<Contact> bootstrapConsideredContacts;
 
 	private ConnectionExperiment connTester;
@@ -75,7 +68,6 @@ public class IntersectionExperiment implements DNSUser {
 		Logger expLogger = Logger.getLogger(Constants.HARVEST_LOG);
 		expLogger.setLevel(Level.SEVERE);
 
-		this.contactToConnected = new HashMap<Contact, Set<Contact>>();
 		this.lastActivityMap = new HashMap<Node, HashMap<Contact, Long>>();
 		this.advancingNodes = new HashMap<Node, Set<Contact>>();
 		this.advancingWindowList = new LinkedList<Double>();
@@ -116,7 +108,6 @@ public class IntersectionExperiment implements DNSUser {
 
 	private void refresh() {
 
-		// XXX temp logging
 		long start = System.currentTimeMillis();
 
 		/*
@@ -133,8 +124,6 @@ public class IntersectionExperiment implements DNSUser {
 		 * Test failed connections, then try to reconnect to anyone we lost
 		 * connection to
 		 */
-		// TODO ensure failed nodes actually have their TCP connections closed
-		// as a result of failure both here and in harvest
 		this.testNodes();
 
 		/*
@@ -162,8 +151,6 @@ public class IntersectionExperiment implements DNSUser {
 		/*
 		 * Run pings to every active node, extract failures
 		 */
-		// TODO fix pinger logic so it waits till all nodes are done before
-		// checking for fail
 		Set<Node> failedNodes = this.pinger.runNodeTest(this.activeConnections);
 		Set<Contact> failedContacts = this.getContactsForNodeSet(failedNodes);
 
@@ -329,6 +316,8 @@ public class IntersectionExperiment implements DNSUser {
 		}
 	}
 
+	// TODO investigate if this is the source of our
+	// "zero contacts to connection experiment" issues
 	public void dnsRefresh() {
 		Set<Contact> dnsNodes = ConnectionExperiment.dnsBootStrap();
 		this.boostrap(dnsNodes);
